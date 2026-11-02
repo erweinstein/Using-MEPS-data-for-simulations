@@ -1,0 +1,538 @@
+# Using MEPS data for simulations: a walkthrough
+
+Eliot R. Weinstein · November 2026
+
+This document explains what we did to turn four public use files from the
+Medical Expenditure Panel Survey (MEPS) into populations for simulation
+studies, why we did it, and why it may be useful to others (especially
+students and early-career researchers who need realistic data for a methods
+project, a class, or a thesis). It also gives a short tour of the MEPS website,
+since the site is large and it has been years since some of us last used it.
+
+Contents
+
+1. Why use real data as a simulation population?
+2. A short tour of the MEPS website
+3. What we downloaded, and why those four files
+4. Turning the files into small, analysis-ready CSVs
+5. What the outcomes look like
+6. Six things to do with them (the example scripts)
+7. Why this could be useful to others, and some cautions
+8. References
+
+---
+
+## 1. Why use real data as a simulation population?
+
+Simulation studies (Morris, White and Crowther 2019 give a good general guide)
+usually generate data from textbook distributions: a normal, a gamma, a
+lognormal with a skewness chosen to look "realistic". The trouble is that what
+a method gets right or wrong often depends on exactly the features those
+distributions smooth over: a lump at zero, a handful of enormous values, a
+bounded scale with a floor, or a change score whose tails are much heavier than
+the level it is computed from. Reviews of real data make the point bluntly.
+Micceri (1989) examined 440 large distributions of achievement and
+psychometric measures and found every one of them significantly non-normal;
+Blanca et al. (2013) found only ~5.5% of 693 small samples of psychological
+measures close to normal. Health care use and spending are further out still
+(section 5).
+
+A **plasmode** simulation (Franklin et al. 2014, writing about
+pharmacoepidemiology in large health care databases) keeps the real data as
+the population and draws simulated samples from it, adding a known "truth"
+(e.g., a treatment effect of a chosen size) where one is needed. The method
+being studied then meets the real shape of the data, not an idealized one,
+while the truth is still known, so the simulation can still say whether the
+method got the right answer.
+
+We came to this from a project on planning a trial's sample size from a
+pilot study. The usual rules take an upper confidence limit for the outcome's
+standard deviation (SD) from the pilot and plug it into the sample-size
+formula; earlier simulations with textbook distributions had shown these
+rules fall short with skewed or heavy-tailed outcomes, and the natural
+question was "how short, with real outcomes from health services research?"
+MEPS answered that (section 6.1), and along the way it became clear that the
+same four files support many other exercises.
+
+**Why MEPS?** It is free; the files are public (no application or data use
+committee); it is nationally representative of the US civilian
+noninstitutionalized population (with survey weights to make it so); it covers
+outcomes that health services researchers, biostatisticians and health
+economists actually study (spending, visits, hospital stays, conditions, mental
+health scores); it has a two-year panel, so the same people are measured twice;
+and it is documented in great detail by the Agency for Healthcare Research and
+Quality (AHRQ), which runs it.
+
+---
+
+## 2. A short tour of the MEPS website
+
+### 2.1 The Data Files page
+
+Everything starts at the **Data Files** page,
+<https://meps.ahrq.gov/mepsweb/data_stats/download_data_files.jsp> (from the MEPS
+home page: left-hand menu, **Data and Statistics → Data Files**). The page lets
+you search the public use files (PUFs) by **data year**, by **type of data**
+(e.g., "Household Full Year File"), by **file number** (e.g., HC-251), or by
+words in the file's title. A search returns a list of matching files, each with
+its number and title; clicking a title opens that file's own page (2.2).
+
+It helps to know how the files are organized before searching (AHRQ's
+"more info" page on data files describes each type):
+
+- **Full Year Consolidated (FYC)** files: one row per person per calendar year,
+  with demographics, insurance, health status, and annual totals of use and
+  spending. This is the main file, and the one most analyses start from.
+- **Event files**: one row per medical event (a prescription fill, a dental
+  visit, a hospital stay, an emergency room visit, an outpatient visit, an
+  office-based visit, home health), with that event's dates, details and
+  payments. For a given year they share a number and differ by letter.
+- **Medical Conditions** files: one row per condition a person reported, with
+  ICD-10-CM codes (collapsed to three characters, and sometimes further, for
+  confidentiality) and AHRQ's Clinical Classifications Software Refined (CCSR)
+  categories.
+- **Longitudinal** files: one row per person in a panel, followed for two
+  years, with variables from both years' FYC files and a longitudinal weight.
+- Others: jobs, person-round-plan (insurance plans), the condition-event and
+  prescription-event link files, and pooled files for combining years
+  (HC-036, with variance strata and PSUs consistent across years, and HC-036BRR,
+  with replicate indicators for balanced repeated replication).
+
+**File numbers.** Every PUF has a number, "HC-" followed by digits (and a
+letter for event files); the files themselves are named with "h" instead of
+"HC-" (HC-251 → `h251.dta`). For 2023 (from the file-name tables in AHRQ's
+GitHub repository, 2.4):
+
+| 2023 file | Number | File name |
+|---|---|---|
+| Full Year Consolidated | HC-251 | h251 |
+| Medical Conditions | HC-249 | h249 |
+| Prescribed medicines | HC-248A | h248a |
+| Dental visits | HC-248B | h248b |
+| Other medical expenses | HC-248C | h248c |
+| **Hospital inpatient stays** | **HC-248D** | **h248d** |
+| Emergency room visits | HC-248E | h248e |
+| Outpatient visits | HC-248F | h248f |
+| Office-based visits | HC-248G | h248g |
+| Home health | HC-248H | h248h |
+| Event link files (appendix) | HC-248I | h248if1, h248if2 |
+| Jobs | HC-246 | h246 |
+| Person-round-plan | HC-250 | h250 |
+| **Panel 27 Longitudinal (2022–2023)** | **HC-252** | **h252** |
+
+### 2.2 A file's page
+
+Each file's page has the same layout. Taking HC-251 as the example
+(<https://meps.ahrq.gov/mepsweb/data_stats/download_data_files_detail.jsp?cboPufNumber=HC-251>):
+
+- **Data files**, in several formats, each a zip: ASCII (with programming
+  statements to read it), SAS V9, SAS transport, **Stata** (`h251dta.zip`) and
+  Excel. AHRQ's own advice for R users is to take the Stata version: it loads
+  fastest, with `haven::read_dta()`. (The SAS transport files for 2017 and later
+  use a format R cannot read; avoid them.) The page suggests right-clicking a
+  link and choosing "Save Link As".
+- **Documentation**, as HTML and PDF (for HC-251,
+  <https://meps.ahrq.gov/data_stats/download_data/pufs/h251/h251doc.shtml>).
+- **Codebook**, as PDF and as a searchable HTML version: every variable, its
+  label, and weighted and unweighted frequencies of its values.
+- **Programming statements** for SAS, SPSS, Stata and R (needed only for the
+  ASCII version).
+
+### 2.3 Reading the documentation (what to look at first)
+
+The documentation for every file follows one outline: **A. Data Use
+Agreement**; **B. Background** (the household component, the medical provider
+component, survey management and data collection); **C. Technical and
+Programming Information** (general information, the data file, survey sample
+information); **D. Variable-Source Crosswalk** (which questionnaire item each
+variable came from); and appendices (for HC-251, the summary of use and
+spending variables by type of care is especially useful). Four things are worth
+reading before writing any code:
+
+1. **The data use agreement (section A).** Use the data only for statistical
+   reporting and analysis; make no attempt to identify anyone; do not link the
+   data to other identifiable records (other than the National Health
+   Interview Survey, under AHRQ's own arrangements); and cite AHRQ and MEPS as
+   the data source. This is why our repository includes code but not data.
+2. **Variable naming (section C.2).** Annual variables end in the two-digit
+   year (`TOTEXP23`, total spending in 2023; `PERWT23F`, the final person
+   weight). Variables asked in a particular interview "round" end in two round
+   numbers, because two panels overlap in any year: `31` means round 3 for the
+   older panel and round 1 for the newer one, `42` rounds 4 and 2, `53` rounds 5
+   and 3. The mental health scales we use come from a self-administered
+   questionnaire given in rounds 2 and 4, so in the FYC file they are
+   `K6SUM42` (the Kessler 6 distress score, 0–24), `PHQ242` (the two-item
+   Patient Health Questionnaire, 0–6) and `VMCS42` (the VR-12 mental component
+   summary). The longitudinal file follows one panel, so the same scales there
+   are `K6SUM2` (round 2, in 2022) and `K6SUM4` (round 4, in 2023), and annual
+   totals are `TOTEXPY1` and `TOTEXPY2`.
+3. **Missing-value codes.** MEPS codes missing values as negative numbers
+   (e.g., −1 "inapplicable", −7 "refused", −8 "don't know", −15 "cannot be
+   computed"), so a variable that "cannot" be negative may contain negative
+   values. Forgetting this is the easiest way to get nonsense means. In 2023,
+   for example, 5,413 of the 14,768 adults with a positive weight have a
+   negative `K6SUM42` (4,992 coded −1 and 421 coded −15).
+4. **Weights and variance estimation (sections C.3.1.3 and C.3.8).** MEPS is a
+   complex sample: households are clustered in primary sampling units (PSUs,
+   `VARPSU`) within strata (`VARSTR`), and some groups are oversampled, so each
+   person has a weight. National estimates need the weights, and standard
+   errors need the strata and PSUs (Taylor-series linearization, or balanced
+   repeated replication with HC-036BRR). Section 6.3 shows both in R.
+
+### 2.4 Other help AHRQ provides
+
+- **AHRQ's GitHub repository**, <https://github.com/HHS-AHRQ/MEPS>: example code
+  in R, SAS and Stata, workshop exercises, and quick-reference guides,
+  including the tables of file names by year used above and the ICD-10 and
+  CCSR labels used in the conditions files.
+- **The `MEPS` R package** (<https://github.com/e-mitchell/meps_r_pkg>):
+  `get_puf_names()` lists file names by year and type, `dl_meps()` downloads a
+  file, and `read_MEPS()` reads one straight from the website.
+- **The MEPS-HC Variable Explorer** (<https://datatools.ahrq.gov/meps-hc>),
+  for finding a variable across years (names change: before 2002 the PSU
+  variable carried a year suffix, and since 2018 the panel number is the first
+  part of the person ID, `DUPERSID`).
+- AHRQ's **precision guidelines** for MEPS estimates, and **workshops** run
+  several times a year.
+
+---
+
+## 3. What we downloaded, and why those four files
+
+| File | Why we wanted it |
+|---|---|
+| HC-251, 2023 Full Year Consolidated (18,919 people; 18,463 with a positive weight) | Annual spending (`TOTEXP23`), office visits (`OBTOTV23`), emergency visits, hospital discharges and nights, prescriptions, the mental health scales, weights and design variables, age and sex. |
+| HC-249, 2023 Medical Conditions | To flag people with depression (ICD-10 F32 or F33), whose spending and visits are the population a depression or mental health services trial would recruit from. |
+| HC-248D, 2023 Hospital Inpatient Stays (1,830 stays) | Nights per stay (`NUMNIGHX`), the population-level analogue of length of stay, one of the most common skewed outcomes in health services research. |
+| HC-252, Panel 27 Longitudinal, 2022–2023 (8,292 people) | The same people in two years: baseline and follow-up spending and mental health scores, for change scores and baseline-adjusted (ANCOVA) analyses. |
+
+We took the Stata versions and read them with `haven::read_dta()`.
+
+---
+
+## 4. Turning the files into small, analysis-ready CSVs
+
+`R/01_extract_meps.R` reads the four `.dta` files and writes four small CSVs to
+`data/` (about 2.6 MB in all, much smaller than the original files):
+
+- `meps_fyc2023.csv`: one row per person, with the columns listed in section 3
+  and the depression flags;
+- `meps_stays2023.csv`: one row per hospital stay, with nights, payments, the
+  person's age and the depression flags;
+- `meps_panel27.csv`: one row per panel member, with both years' spending, use
+  and mental health scores, and the longitudinal weight;
+- `meps_variables.csv`: the name and label of every variable in all four files
+  (4,101 variables), so names can be checked without opening the codebooks.
+
+A few decisions are worth explaining:
+
+- **Columns are chosen by name pattern** (e.g., every column starting with
+  `K6SUM`), so the script still works if a suffix is different from what we
+  expected, and `meps_variables.csv` shows what was available.
+- **Missing-value codes are kept** in the CSVs (as negative numbers) and dropped
+  only at analysis time, so the choice is visible in the analysis code.
+- **Depression** is defined two ways. The first (`depression`) is any
+  condition coded ICD-10 F32 or F33 (in 2023: 1,436 adults with a positive
+  weight). It is worth noting that AHRQ's ICD-10 label table lists F32
+  ("depressive episode") but not F33, so recurrent depression may be collapsed
+  into F32 in the public files; the codebook's frequencies for `ICD10CDX` show
+  which codes actually appear. The second (`depression_ccsr`, added after our
+  own run) uses AHRQ's CCSR category MBD002, "Depressive disorders".
+- **All ages are kept** in the person file, so the adult restriction (18+) is
+  made in the analysis, where it can be changed.
+- **Paths on Windows.** A path copied from File Explorer uses backslashes
+  (`C:\Users\...`), and R reads a single backslash in a string as the start of
+  an escape sequence (`\U` is an error). Use forward slashes
+  (`"C:/Users/you/MEPS 2023"`) or double backslashes. (This one cost us a
+  rerun.)
+
+`R/00_functions.R` then defines eight "populations" from the CSVs: an outcome
+vector and its survey weights, for adults (18+) with a positive weight and a
+valid (non-negative) value; for a change between years, both years must be
+valid. Simulated samples are drawn with replacement, **with probability
+proportional to the weight**, so each draw behaves like a person sampled at
+random from US adults as MEPS represents them.
+
+---
+
+## 5. What the outcomes look like
+
+From `R/02_describe_populations.R` (weighted to US adults; kurtosis is 3 for a
+normal distribution):
+
+![Histograms of the eight populations](docs/fig_populations.png)
+
+| Population | N | Mean | SD | Skewness | Kurtosis | % zero | 99th percentile |
+|---|---|---|---|---|---|---|---|
+| Total spending, all adults | 14,768 | $8,579 | $21,449 | 7.5 | 99 | 14% | $98,554 |
+| Total spending, adults with depression | 1,436 | $14,873 | $28,863 | 5.6 | 43 | 0% | $159,241 |
+| Office visits, adults with depression | 1,436 | 16.0 | 21.0 | 4.0 | 39 | 4% | 104 |
+| Nights per hospital stay (adults) | 1,611 stays | 4.9 | 7.9 | 7.0 | 82 | 0% | 36 |
+| K6 score, adults with depression | 982 | 6.8 | 5.4 | 0.8 | 3.0 | 10% | 21 |
+| Change in K6, 2022 to 2023 | 3,077 | 0.0 | 3.2 | 0.1 | 8.3 | 33% | 9 |
+| Change in VR-12 mental summary | 3,303 | 0.1 | 7.9 | −0.1 | 5.4 | 5% | 22 |
+| Change in total spending | 6,513 | $824 | $23,321 | −3.5 | 187 | 9% | $67,545 |
+
+Two things stand out. First, the spending and use outcomes are far outside the
+range in Blanca et al.'s review of psychological measures (whose largest
+kurtosis was ~10.4 on this scale): the kurtosis of spending is ~99, of nights
+per stay ~82, and of the change in spending ~187. Second, the K6 score among
+adults with depression has almost exactly the kurtosis of a normal
+distribution, but the **change** in K6 over a year (the quantity a trial with a
+baseline would be sized on) has a kurtosis of ~8.3, with a third of people
+not changing at all. This echoes Micceri's finding that gain scores were among
+the most non-normal measures he examined.
+
+---
+
+## 6. Six things to do with them
+
+### 6.1 Planning a trial from a pilot's SD (`R/03_plasmode_sd_planning.R`)
+
+*The question.* A two-arm trial's size depends on the outcome's SD. Planning
+from a small pilot's SD (the "plug-in" approach) gives an underpowered trial
+about half the time or more, so the usual recommendation (Browne 1995) is to
+plan from an upper confidence limit for the SD at, say, 80%, so that the main
+trial has its intended power with probability ~80%. The standard limit uses
+the chi-square distribution and assumes a normal outcome. Bonett (2006)
+adjusts the limit for the kurtosis; bootstrap limits (percentile, BCa) assume
+nothing about the shape.
+
+*The simulation.* Each population plays the truth: two arms of m people
+(m = 10, 20, 30, 60) are drawn from it, each rule gives an upper limit for the
+pooled SD, and the plan is "adequate" if the limit is at least the population
+SD. A rule that works should give adequate plans in ~80% of pilots. We also
+ran Bonett's limit with the population's kurtosis (an "oracle": what knowing
+the tails from outside the pilot would buy). 1,000 pilots per point.
+
+*What we found* (share of pilots giving an adequate plan, m = 10 to 60):
+
+![Share of pilots giving an adequately powered trial, by rule and pilot size](docs/fig_plasmode_sd.png)
+
+| Population | Plug-in | Chi-square | Bonett | Percentile | BCa | Bonett, true kurtosis |
+|---|---|---|---|---|---|---|
+| Spending, all adults | 26–34% | 34–41% | 46–57% | 36–52% | 38–57% | 76–82% |
+| Spending, depression | 26–41% | 29–48% | 35–67% | 29–60% | 31–69% | 60–71% |
+| Office visits, depression | 30–39% | 47–50% | 57–67% | 43–60% | 50–68% | 84–90% |
+| Nights per stay | 22–34% | 32–40% | 40–56% | 32–50% | 36–59% | 72–81% |
+| K6, depression | 47–49% | 81–82% | 82–83% | 64–74% | 81–83% | 81–82% |
+| Change in K6 | 39–47% | 59–65% | 66–75% | 50–68% | 62–77% | 74–78% |
+| Change in VR-12 mental | 44–48% | 69–72% | 75–78% | 57–71% | 72–80% | 79–80% |
+| Change in spending | 21–28% | 28–34% | 37–48% | 28–44% | 32–51% | 81–90% |
+
+For a near-normal score (K6 among adults with depression), the chi-square limit
+does what it promises (81–82%). For change scores it falls to 59–72%, and for
+spending, visits and hospital nights every rule that uses only the pilot gives
+an adequately powered trial in at most ~two thirds of cases, and often in a
+third. The oracle column shows that the missing ingredient is information
+about the tails, which a pilot of 10–60 per arm mostly cannot provide. (This
+is the companion project's "problem 3", now with real data; a practical
+implication is to borrow the kurtosis from a larger dataset, such as MEPS
+itself, when planning a trial with a cost or utilization outcome.)
+
+### 6.2 How standard tests behave with costs (`R/04_tests_for_costs.R`)
+
+*The question.* With cost data, should a trial compare means with a t test, or
+use a rank test or a test on log costs? Thompson and Barber (2000) argued that
+the arithmetic mean is what budget holders need, so the analysis should be
+about the mean, but rank and log tests often look more powerful.
+
+*The simulation.* Two arms of n (25 to 2,000) drawn from MEPS spending; under
+the null both arms come from the same population, and under the alternative
+the treatment arm's spending is 20% lower for everyone. 2,000 trials per
+point.
+
+*What we found.*
+
+- **Type I error.** The Wilcoxon and log-scale tests are close to 5% at every
+  n. Welch's t test is conservative up to n = 100 per arm (2.6–4.2%; 2.6% at
+  n = 25 for all adults and 2.9% in the depression group), a known effect of
+  strong skewness, and close to 5% from n = 250 on.
+- **Power for a 20% cut in spending**, all adults: at n = 2,000 per arm, 81%
+  for Welch's t, 83% for Wilcoxon and only 49% for the t test on log(1 + y)
+  (the 14% of adults with no spending stay at zero, which dilutes the effect
+  on the log scale). Among adults with depression (almost none with zero
+  spending), the rank and log tests are more powerful than the t test (e.g.,
+  at n = 500: 70% and 67% against 45%).
+- **The usual formula works for the t test at these sizes.** The
+  normal-approximation power for the mean difference (with the population SD)
+  was within ~2 points of the simulated power from n = 100 on (e.g., 80% vs
+  81% at n = 2,000, all adults).
+
+The more powerful tests answer different questions (a shift in the
+distribution, or a ratio of geometric-type means), so "more power" here is not
+a reason to switch; it is a reason to be clear about the estimand.
+
+### 6.3 Survey-design inference, and a bootstrap that respects the design (`R/05_survey_design_and_concentration.R`)
+
+*The question.* How much do MEPS's weights, strata and clusters change a
+standard error, and does a bootstrap agree with the textbook (Taylor-series)
+answer?
+
+*What we found* (adults, 2023; the survey design is declared on everyone and
+then restricted to adults, a "domain" analysis, which is the correct order):
+
+- Mean spending $8,579, with a Taylor-series SE of $202 and a design effect of
+  ~1.3; a naive analysis (unweighted, as if a simple random sample) reports an
+  SE of $192 and, more importantly, a different mean ($9,764), since it
+  ignores the weights.
+- A with-replacement bootstrap of PSUs within strata, with rescaled weights
+  (Rao and Wu 1988; `survey`'s "subbootstrap", 500 replicates), gives an SE of
+  $195, close to the Taylor-series value.
+- Adults with depression spent ~$14,873 on average, against ~$7,924 for
+  adults without.
+
+*Concentration of spending* (an economics-style summary; bootstrap SEs in
+parentheses): the top 1% of adults account for 18.9% (0.7) of all adult
+spending, the top 5% for 46.4% (0.8), the top 10% for 62.9% (0.7), and the top
+half for 96.7% (0.1); the Gini coefficient is 0.77 (0.004). Figures like these
+are standard calibration targets in health economics models, and the code
+shows how to get them, with uncertainty, from MEPS.
+
+### 6.4 Calibrating a parametric model, and what it misses (`R/06_parametric_vs_plasmode.R`)
+
+*The question.* The alternative to a plasmode simulation is to fit a model to
+the real data and simulate from the fit. For spending, the standard models are
+two-part models (Duan et al. 1983): a logit for any spending, then either a
+gamma GLM with a log link or a linear model for log spending among spenders
+(Manning and Mullahy 2001 discuss the choice); for counts, the negative
+binomial. Do the calibrated models reproduce the real tails?
+
+*What we found* (covariates: age group, sex, depression; one synthetic value
+per real adult):
+
+| Series | Mean | SD | Kurtosis | 99th percentile | Top 1% share |
+|---|---|---|---|---|---|
+| Real spending | $8,579 | $21,449 | 99 | $98,554 | 18.8% |
+| Two-part, gamma | $8,355 | $24,107 | 80 | $115,375 | 21.2% |
+| Two-part, lognormal | $10,993 | $59,784 | 1,642 | $142,325 | 34.1% |
+| Real office visits | 7.3 | 13.3 | 51 | 63 | 12.6% |
+| Negative binomial | 7.5 | 14.4 | 81 | 65 | 13.4% |
+
+The gamma two-part model and the negative binomial come reasonably close; the
+lognormal two-part model, a common default, produces a tail far heavier than
+the real one, and its mean is ~28% too high. Rerunning the pilot-SD check of
+6.1 in each synthetic world (m = 20 and 60) shows why this matters: in the
+gamma world the chi-square and percentile rules give 36–54% adequate plans,
+close to the real data's 33–51%, but in the lognormal world they give 12–23%.
+A simulation calibrated with the "wrong" (but standard) family would have
+reached a much more pessimistic conclusion than the real data support. The
+plasmode approach sidesteps the choice of family entirely.
+
+### 6.5 Change score or ANCOVA? (`R/07_change_scores_vs_ancova.R`)
+
+*The question.* With a baseline measurement, a trial can analyse the follow-up
+alone, the change from baseline, or the follow-up adjusted for baseline
+(ANCOVA). With correlation ρ between baseline and follow-up, the change score
+beats the follow-up alone only when ρ > 0.5, and ANCOVA is never worse than
+either (Frison and Pocock 1992; Vickers and Altman 2001).
+
+*What we found* (Panel 27 adults, 2022 to 2023; a difference of 0.3 follow-up
+SDs; 2,000 plasmode trials at the size ANCOVA needs):
+
+| Outcome | ρ | n per arm: follow-up / change / ANCOVA | Power at the ANCOVA size: follow-up / change / ANCOVA |
+|---|---|---|---|
+| K6 | 0.66 | 175 / 116 / 99 | 55% / 73% / 80% |
+| VR-12 mental summary | 0.60 | 175 / 135 / 112 | 60% / 71% / 78% |
+| Total spending | 0.44 | 175 / 196 / 142 | 75% / 72% / 84% |
+
+For the mental health scores, ρ is above 0.5 and the change score helps; for
+spending it is below 0.5 and the change score is *worse* than ignoring the
+baseline, exactly as the theory says. ANCOVA gave close to its planned 80%
+power for the scores and more than planned for spending (the formula uses
+variances only, and with spending's tails the planned size is not the whole
+story).
+
+### 6.6 Other ideas
+
+The same files support many other exercises, for example:
+
+- **Regression with skewed outcomes**: compare OLS, GLMs and two-part models
+  for spending by repeatedly sampling from MEPS and checking bias and coverage
+  for a known (population) coefficient.
+- **Count models**: check the coverage of Poisson, quasi-Poisson and negative
+  binomial confidence intervals for office or emergency visits.
+- **Survey methods**: compare Taylor-series, BRR (with HC-036BRR) and bootstrap
+  SEs for domains of different sizes, or study what happens to a model-based
+  analysis that ignores the weights.
+- **Missing data**: delete values from the complete cases under a chosen
+  mechanism (MCAR, MAR, MNAR) and compare methods against the known answer.
+- **Event-level clustering**: the stays file has several stays for some
+  people (1,611 adult stays from 1,236 people), a ready-made example for
+  cluster-robust SEs and multilevel models.
+- **Health economics calibration**: moments, quantiles, top shares and
+  year-to-year persistence of spending (from the panel) as targets for a
+  structural or microsimulation model.
+
+---
+
+## 7. Why this could be useful to others, and some cautions
+
+For students and early-career researchers, MEPS is an unusually good teaching
+dataset: free, public, documented, realistic, and large enough to act as a
+population for samples of the sizes that matter in practice (tens to hundreds).
+Planning a study with a cost or utilization outcome is a practical use in its
+own right: the moments and tails in section 5 (or their equivalents for a
+relevant subgroup) can be used to check a sample size, or to borrow the
+kurtosis that a pilot cannot estimate (section 6.1).
+
+Some cautions:
+
+- **The population is a sample.** Drawing with replacement from 1,436 adults
+  with depression treats those 1,436 (with their weights) as the population.
+  The tail is truncated at the largest observed value, and the same extreme
+  person can appear in many simulated samples. Conclusions about the far tail
+  are only as good as the number of people in it.
+- **Weighted draws are not design-based inference.** Drawing with probability
+  proportional to the weight makes the simulated samples represent US adults,
+  but it ignores the clustering; for estimates *about* the US population, use
+  the survey design (section 6.3).
+- **The population is the US civilian noninstitutionalized population**, so it
+  excludes nursing home residents and the military, and a trial's eligibility
+  criteria may select a quite different group.
+- **One year, one panel.** Spending changes over time; pooling years (with
+  HC-036) gives larger populations.
+- **The data use agreement applies to everything made from the files**,
+  including the small CSVs: share code, not data, and cite AHRQ and MEPS.
+
+---
+
+## 8. References
+
+- Blanca, M. J., J. Arnau, D. López-Montiel, R. Bono and R. Bendayan (2013).
+  Skewness and kurtosis in real data samples. *Methodology* 9(2), 78–84.
+- Bonett, D. G. (2006). Approximate confidence interval for standard deviation
+  of nonnormal distributions. *Computational Statistics & Data Analysis* 50,
+  775–782.
+- Browne, R. H. (1995). On the use of a pilot sample for sample size
+  determination. *Statistics in Medicine* 14(17), 1933–1940.
+- Duan, N., W. G. Manning, C. N. Morris and J. P. Newhouse (1983). A comparison
+  of alternative models for the demand for medical care. *Journal of Business
+  & Economic Statistics* 1(2), 115–126.
+- Efron, B. (1987). Better bootstrap confidence intervals. *Journal of the
+  American Statistical Association* 82(397), 171–185.
+- Franklin, J. M., S. Schneeweiss, J. M. Polinski and J. A. Rassen (2014).
+  Plasmode simulation for the evaluation of pharmacoepidemiologic methods in
+  complex healthcare databases. *Computational Statistics & Data Analysis* 72,
+  219–226.
+- Frison, L. and S. J. Pocock (1992). Repeated measures in clinical trials:
+  analysis using mean summary statistics and its implications for design.
+  *Statistics in Medicine* 11(13), 1685–1704.
+- Lumley, T. (2004). Analysis of complex survey samples. *Journal of
+  Statistical Software* 9(8), 1–19.
+- Manning, W. G. and J. Mullahy (2001). Estimating log models: to transform or
+  not to transform? *Journal of Health Economics* 20(4), 461–494.
+- Micceri, T. (1989). The unicorn, the normal curve, and other improbable
+  creatures. *Psychological Bulletin* 105(1), 156–166.
+- Morris, T. P., I. R. White and M. J. Crowther (2019). Using simulation
+  studies to evaluate statistical methods. *Statistics in Medicine* 38(11),
+  2074–2102.
+- Rao, J. N. K. and C. F. J. Wu (1988). Resampling inference with complex
+  survey data. *Journal of the American Statistical Association* 83(401),
+  231–241.
+- Thompson, S. G. and J. A. Barber (2000). How should cost data in pragmatic
+  randomised trials be analysed? *BMJ* 320(7243), 1197–1200.
+- Vickers, A. J. and D. G. Altman (2001). Analysing controlled trials with
+  baseline and follow up measurements. *BMJ* 323(7321), 1123–1124.
+- Agency for Healthcare Research and Quality. Medical Expenditure Panel Survey
+  public use files HC-251, HC-249, HC-248D and HC-252 (see `CITATION.md`).

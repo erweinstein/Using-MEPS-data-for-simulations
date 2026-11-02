@@ -1,0 +1,10 @@
+# MEPS data are not redistributed here: download them from AHRQ (see WALKTHROUGH.md)
+data/*
+!data/README.md
+output/*
+!output/README.md
+.Rproj.user/
+.Rhistory
+.RData
+*.dta
+*.zip
