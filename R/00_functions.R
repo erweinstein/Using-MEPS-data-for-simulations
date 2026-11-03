@@ -12,7 +12,15 @@
 # eliotw@uchicago.edu
 # erweinstein.com
 
-data_dir <- "data"
+# Where the CSVs are. If R/01_extract_meps.R has not been run, the scripts fall
+# back to the synthetic example data made by R/00_make_example_data.R, so the
+# code can be tried before downloading anything (the numbers will differ).
+data_dir <- if (file.exists("data/meps_fyc.csv")) "data" else "data_example"
+if (data_dir == "data_example") {
+  if (!file.exists("data_example/meps_fyc.csv")) source("R/00_make_example_data.R")
+  message("Using the SYNTHETIC example data in data_example/ (not MEPS). ",
+          "Run R/01_extract_meps.R to use the real files.")
+}
 for (p in c("dplyr", "ggplot2")) if (!requireNamespace(p, quietly = TRUE)) install.packages(p)
 
 read_meps <- function(name) {
@@ -22,20 +30,20 @@ read_meps <- function(name) {
 }
 
 load_populations <- function() {
-  fyc <- read_meps("meps_fyc2023.csv"); pan <- read_meps("meps_panel27.csv"); sty <- read_meps("meps_stays2023.csv")
-  a <- subset(fyc, AGE23X >= 18 & PERWT23F > 0); d <- subset(a, depression == 1)
-  s <- subset(sty, AGE23X >= 18 & PERWT23F > 0)
+  fyc <- read_meps("meps_fyc.csv"); pan <- read_meps("meps_panel.csv"); sty <- read_meps("meps_stays.csv")
+  a <- subset(fyc, AGE >= 18 & PERWT > 0); d <- subset(a, depression == 1)
+  s <- subset(sty, AGE >= 18 & PERWT > 0)
   p <- subset(pan, AGEY1X >= 18 & LONGWT > 0)
   chg <- function(x1, x2) ifelse(x1 >= 0 & x2 >= 0, x2 - x1, NA)
   P <- list(
-    spend_all   = list(y = a$TOTEXP23, w = a$PERWT23F, label = "Total spending, all adults"),
-    spend_dep   = list(y = d$TOTEXP23, w = d$PERWT23F, label = "Total spending, adults with depression"),
-    visits_dep  = list(y = d$OBTOTV23, w = d$PERWT23F, label = "Office visits, adults with depression"),
-    nights_stay = list(y = s$NUMNIGHX, w = s$PERWT23F, label = "Nights per hospital stay"),
-    k6_dep      = list(y = d$K6SUM42,  w = d$PERWT23F, label = "K6 distress score, adults with depression"),
+    spend_all   = list(y = a$TOTEXP,   w = a$PERWT, label = "Total spending, all adults"),
+    spend_dep   = list(y = d$TOTEXP,   w = d$PERWT, label = "Total spending, adults with depression"),
+    visits_dep  = list(y = d$OBTOTV,   w = d$PERWT, label = "Office visits, adults with depression"),
+    nights_stay = list(y = s$NUMNIGHX, w = s$PERWT, label = "Nights per hospital stay"),
+    k6_dep      = list(y = d$K6SUM42,  w = d$PERWT, label = "K6 distress score, adults with depression"),
     k6_chg      = list(y = chg(p$K6SUM2, p$K6SUM4), w = p$LONGWT, label = "Change in K6 over a year"),
     mcs_chg     = list(y = chg(p$VMCS2, p$VMCS4),   w = p$LONGWT, label = "Change in VR-12 mental summary over a year"),
-    spend_chg   = list(y = chg(p$TOTEXPY1, p$TOTEXPY2), w = p$LONGWT, label = "Change in total spending, 2022 to 2023"))
+    spend_chg   = list(y = chg(p$TOTEXPY1, p$TOTEXPY2), w = p$LONGWT, label = "Change in total spending over a year"))
   for (k in names(P)) {
     ok <- !is.na(P[[k]]$y) & (grepl("_chg$", k) | P[[k]]$y >= 0)
     P[[k]]$y <- P[[k]]$y[ok]; P[[k]]$w <- P[[k]]$w[ok] / sum(P[[k]]$w[ok])

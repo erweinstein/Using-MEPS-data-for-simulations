@@ -2,7 +2,7 @@
 #
 # MEPS is not a simple random sample: households are clustered in primary
 # sampling units (PSUs, VARPSU) within strata (VARSTR), and some groups are
-# oversampled, so each person carries a weight (PERWT23F). The other scripts
+# oversampled, so each person carries a weight (PERWT). The other scripts
 # use the weights only to draw "representative" plasmode samples; this one does
 # survey inference properly, with the survey package (Lumley 2004), and shows:
 #   1. mean spending for adults with its Taylor-series (linearization) SE, the
@@ -28,32 +28,32 @@ library(survey)
 options(survey.lonely.psu = "adjust")
 set.seed(5)
 
-fyc <- read_meps("meps_fyc2023.csv")
-fyc <- subset(fyc, PERWT23F > 0)
-fyc$adult <- fyc$AGE23X >= 18
-des <- svydesign(id = ~VARPSU, strata = ~VARSTR, weights = ~PERWT23F, data = fyc, nest = TRUE)
+fyc <- read_meps("meps_fyc.csv")
+fyc <- subset(fyc, PERWT > 0)
+fyc$adult <- fyc$AGE >= 18
+des <- svydesign(id = ~VARPSU, strata = ~VARSTR, weights = ~PERWT, data = fyc, nest = TRUE)
 ad  <- subset(des, adult)
 
 # 1. Mean spending, Taylor-series SE and design effect
-m <- svymean(~TOTEXP23, ad, deff = TRUE)
+m <- svymean(~TOTEXP, ad, deff = TRUE)
 a <- subset(fyc, adult)
-naive_se <- sd(a$TOTEXP23) / sqrt(nrow(a))          # ignores weights, strata and clusters
+naive_se <- sd(a$TOTEXP) / sqrt(nrow(a))          # ignores weights, strata and clusters
 # 2. Bootstrap of PSUs within strata (Rao-Wu rescaling), 500 replicates
 rep_ad <- subset(as.svrepdesign(des, type = "subbootstrap", replicates = 500), adult)
-mb <- svymean(~TOTEXP23, rep_ad)
-by_dep <- svyby(~TOTEXP23, ~depression, ad, svymean)
+mb <- svymean(~TOTEXP, rep_ad)
+by_dep <- svyby(~TOTEXP, ~depression, ad, svymean)
 tab1 <- data.frame(
   quantity = c("Mean spending, adults", "Taylor-series SE", "Design effect",
                "Naive mean (unweighted)", "Naive SE (unweighted, SRS)",
                "PSU bootstrap SE (500 replicates)", "Mean spending, adults with depression",
                "Mean spending, adults without depression"),
-  value = c(coef(m), SE(m), deff(m), mean(a$TOTEXP23), naive_se, SE(mb), coef(by_dep)[2], coef(by_dep)[1]))
+  value = c(coef(m), SE(m), deff(m), mean(a$TOTEXP), naive_se, SE(mb), coef(by_dep)[2], coef(by_dep)[1]))
 write.csv(tab1, "output/survey_mean.csv", row.names = FALSE)
 print(format(tab1, digits = 4, big.mark = ","), row.names = FALSE)
 
 # 3. Concentration of spending: top shares and the Gini coefficient
 conc <- function(w, data) {
-  y <- data$TOTEXP23; keep <- data$adult & w > 0; y <- y[keep]; w <- w[keep]
+  y <- data$TOTEXP; keep <- data$adult & w > 0; y <- y[keep]; w <- w[keep]
   o <- order(y, decreasing = TRUE); y <- y[o]; w <- w[o]
   cw <- cumsum(w) / sum(w); cy <- cumsum(w * y) / sum(w * y)
   top <- function(p) cy[which(cw >= p)[1]]

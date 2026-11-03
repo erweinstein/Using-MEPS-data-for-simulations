@@ -8,3 +8,4 @@ output/*
 .RData
 *.dta
 *.zip
+data_example/*

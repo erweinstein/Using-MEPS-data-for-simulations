@@ -23,30 +23,30 @@ source("R/00_functions.R")
 library(MASS)
 set.seed(6)
 
-fyc <- read_meps("meps_fyc2023.csv")
-a <- subset(fyc, AGE23X >= 18 & PERWT23F > 0 & TOTEXP23 >= 0 & OBTOTV23 >= 0)
-a$age <- cut(a$AGE23X, c(17, 44, 64, Inf), labels = c("18-44", "45-64", "65+"))
-a$sex <- factor(a$SEX); a$dep <- factor(a$depression); a$w <- a$PERWT23F / mean(a$PERWT23F)
-a$any <- as.numeric(a$TOTEXP23 > 0)
-pos <- subset(a, TOTEXP23 > 0)
+fyc <- read_meps("meps_fyc.csv")
+a <- subset(fyc, AGE >= 18 & PERWT > 0 & TOTEXP >= 0 & OBTOTV >= 0)
+a$age <- cut(a$AGE, c(17, 44, 64, Inf), labels = c("18-44", "45-64", "65+"))
+a$sex <- factor(a$SEX); a$dep <- factor(a$depression); a$w <- a$PERWT / mean(a$PERWT)
+a$any <- as.numeric(a$TOTEXP > 0)
+pos <- subset(a, TOTEXP > 0)
 
 # ---- fit -----------------------------------------------------------------------------------------
 f_any  <- glm(any ~ age + sex + dep, family = quasibinomial, data = a, weights = w)
-f_gam  <- glm(TOTEXP23 ~ age + sex + dep, family = Gamma(link = "log"), data = pos, weights = w)
-f_logn <- lm(log(TOTEXP23) ~ age + sex + dep, data = pos, weights = w)
-f_nb   <- glm.nb(OBTOTV23 ~ age + sex + dep, data = a, weights = w)
+f_gam  <- glm(TOTEXP ~ age + sex + dep, family = Gamma(link = "log"), data = pos, weights = w)
+f_logn <- lm(log(TOTEXP) ~ age + sex + dep, data = pos, weights = w)
+f_nb   <- glm.nb(OBTOTV ~ age + sex + dep, data = a, weights = w)
 
 # ---- simulate one synthetic value per real person ------------------------------------------------
 p_any <- predict(f_any, a, type = "response")
 mu_g  <- predict(f_gam, a, type = "response"); shape <- 1 / summary(f_gam)$dispersion
 mu_l  <- predict(f_logn, a); sig <- summary(f_logn)$sigma
 synth <- data.frame(
-  real_spend   = a$TOTEXP23,
+  real_spend   = a$TOTEXP,
   gamma_spend  = rbinom(nrow(a), 1, p_any) * rgamma(nrow(a), shape = shape, rate = shape / mu_g),
   lognorm_spend = rbinom(nrow(a), 1, p_any) * exp(rnorm(nrow(a), mu_l, sig)),
-  real_visits  = a$OBTOTV23,
+  real_visits  = a$OBTOTV,
   nb_visits    = rnbinom(nrow(a), size = f_nb$theta, mu = predict(f_nb, a, type = "response")))
-w <- a$PERWT23F / sum(a$PERWT23F)
+w <- a$PERWT / sum(a$PERWT)
 top1 <- function(y, w) { o <- order(y, decreasing = TRUE); cw <- cumsum(w[o]); sum((w * y)[o][cw <= 0.01]) / sum(w * y) }
 tab <- do.call(rbind, lapply(names(synth), function(k)
   data.frame(series = k, t(wmoments(synth[[k]], w)), top1_share = top1(synth[[k]], w))))

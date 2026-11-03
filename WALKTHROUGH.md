@@ -2,21 +2,30 @@
 
 Eliot R. Weinstein · November 2026
 
-This document explains what we did to turn four public use files from the
-Medical Expenditure Panel Survey (MEPS) into populations for simulation
-studies, why we did it, and why it may be useful to others (especially
-students and early-career researchers who need realistic data for a methods
-project, a class, or a thesis). It also gives a short tour of the MEPS website,
-since the site is large and it has been years since some of us last used it.
+This is a guide to **how** to use public data from the Medical Expenditure
+Panel Survey (MEPS) as the population in a simulation study: how to find what
+you need on the MEPS website, how to read the files into R and cut them down
+to what you need, and how to draw simulated samples from them, with code
+examples for several kinds of methods questions. It is written for students
+and early-career researchers who need realistic data for a methods project, a
+class, or a thesis (and for anyone who, like us, has not used MEPS in years).
+
+The worked example uses four 2023 files, and the numbers quoted below are what
+we got with them, shown so you know what to expect; you do not need those
+files (or any data) to follow along. Section 4.2 shows how to adapt the code to
+another year or other files, and `R/00_make_example_data.R` makes a
+**synthetic** stand-in dataset with the same columns, so every script runs
+before anything is downloaded (the scripts use it automatically when there is
+no real data).
 
 Contents
 
 1. Why use real data as a simulation population?
 2. A short tour of the MEPS website
-3. What we downloaded, and why those four files
-4. Turning the files into small, analysis-ready CSVs
+3. What we downloaded for the example, and why
+4. Turning the files into small, analysis-ready CSVs (and adapting to other years)
 5. What the outcomes look like
-6. Six things to do with them (the example scripts)
+6. Things to do with them (the example scripts)
 7. Why this could be useful to others, and some cautions
 8. References
 
@@ -120,6 +129,11 @@ GitHub repository, 2.4):
 | Person-round-plan | HC-250 | h250 |
 | **Panel 27 Longitudinal (2022–2023)** | **HC-252** | **h252** |
 
+Most panels are followed for two years, but Panels 23 and 24 were extended to
+four because of the COVID-19 pandemic, so they also have three- and four-year
+longitudinal files; the four-year files are **HC-236** (Panel 23, 2018–2021)
+and **HC-245** (Panel 24, 2019–2022).
+
 ### 2.2 A file's page
 
 Each file's page has the same layout. Taking HC-251 as the example
@@ -197,7 +211,7 @@ reading before writing any code:
 
 ---
 
-## 3. What we downloaded, and why those four files
+## 3. What we downloaded for the example, and why
 
 | File | Why we wanted it |
 |---|---|
@@ -205,6 +219,7 @@ reading before writing any code:
 | HC-249, 2023 Medical Conditions | To flag people with depression (ICD-10 F32 or F33), whose spending and visits are the population a depression or mental health services trial would recruit from. |
 | HC-248D, 2023 Hospital Inpatient Stays (1,830 stays) | Nights per stay (`NUMNIGHX`), the population-level analogue of length of stay, one of the most common skewed outcomes in health services research. |
 | HC-252, Panel 27 Longitudinal, 2022–2023 (8,292 people) | The same people in two years: baseline and follow-up spending and mental health scores, for change scores and baseline-adjusted (ANCOVA) analyses. |
+| HC-245, Panel 24 Longitudinal, 2019–2022 (5,565 people), and HC-236, Panel 23 Longitudinal, 2018–2021 (7,080 people) | The same people in four years: spending each year, and the K6 and VR-12 in rounds 2, 4, 6 and 8, with the gaps real people leave (e.g., in Panel 24, only 1,733 of the 2,616 adults with a questionnaire weight have all four K6 scores). For trials with several follow-ups and incomplete data. |
 
 We took the Stata versions and read them with `haven::read_dta()`.
 
@@ -212,23 +227,35 @@ We took the Stata versions and read them with `haven::read_dta()`.
 
 ## 4. Turning the files into small, analysis-ready CSVs
 
-`R/01_extract_meps.R` reads the four `.dta` files and writes four small CSVs to
-`data/` (about 2.6 MB in all, much smaller than the original files):
+### 4.1 The extraction script
 
-- `meps_fyc2023.csv`: one row per person, with the columns listed in section 3
+`R/01_extract_meps.R` reads the four `.dta` files and writes small CSVs to
+`data/` (for 2023, about 2.6 MB in all, much smaller than the original files):
+
+- `meps_fyc.csv`: one row per person, with the columns listed in section 3
   and the depression flags;
-- `meps_stays2023.csv`: one row per hospital stay, with nights, payments, the
+- `meps_stays.csv`: one row per hospital stay, with nights, payments, the
   person's age and the depression flags;
-- `meps_panel27.csv`: one row per panel member, with both years' spending, use
+- `meps_panel.csv`: one row per panel member, with both years' spending, use
   and mental health scores, and the longitudinal weight;
+- `meps_panel4_h245.csv` and `meps_panel4_h236.csv` (if `multi_year_panels` is
+  set): the same for the four-year panels, with spending for years 1–4
+  (`TOTEXPY1`–`TOTEXPY4`), the K6 and VR-12 for rounds 2, 4, 6 and 8, and two
+  weights: `LONGWT` for the whole panel and `LSAQWT` for analyses of the
+  self-administered questionnaire (the mental health scales);
 - `meps_variables.csv`: the name and label of every variable in all four files
-  (4,101 variables), so names can be checked without opening the codebooks.
+  (4,101 variables for 2023), so names can be checked without opening the
+  codebooks;
+- `meps_info.txt`: the data year and file names used.
 
 A few decisions are worth explaining:
 
 - **Columns are chosen by name pattern** (e.g., every column starting with
   `K6SUM`), so the script still works if a suffix is different from what we
   expected, and `meps_variables.csv` shows what was available.
+- **Year suffixes are removed** in the output (`TOTEXP23` becomes `TOTEXP`,
+  `PERWT23F` becomes `PERWT`, `AGE23X` becomes `AGE`), so the example scripts
+  do not depend on the year.
 - **Missing-value codes are kept** in the CSVs (as negative numbers) and dropped
   only at analysis time, so the choice is visible in the analysis code.
 - **Depression** is defined two ways. The first (`depression`) is any
@@ -245,6 +272,50 @@ A few decisions are worth explaining:
   an escape sequence (`\U` is an error). Use forward slashes
   (`"C:/Users/you/MEPS 2023"`) or double backslashes. (This one cost us a
   rerun.)
+
+### 4.2 Adapting the code to another year or other files
+
+Only the settings at the top of `R/01_extract_meps.R` change:
+
+```r
+year  <- 2023
+files <- c(fyc = "h251", cond = "h249", stays = "h248d", panel = "h252")
+```
+
+1. **Find the file names for your year.** Search the Data Files page by year
+   (section 2.1), look them up in AHRQ's table of file names
+   (`Quick_Reference_Guides/meps_file_names.csv` in AHRQ's GitHub repository),
+   or ask R: `MEPS::get_puf_names(year = 2022)` lists every file for 2022 (e.g.,
+   FYC `h243`, conditions `h241`, inpatient stays `h239d`). Longitudinal files
+   are numbered by panel (`meps_longitudinal_file_names.csv`; Panel 26,
+   2021–2022, is in that table too).
+2. **Check the variable names.** Annual variables change their suffix with the
+   year (handled by `yy`), but some variables are added, dropped or renamed
+   between years (the VR-12 replaced the SF-12 in 2017, for example). Run the
+   script once and look at `meps_variables.csv`, or use the MEPS-HC Variable
+   Explorer (section 2.4).
+3. **For other outcomes**, add patterns to the `keep()` call for the person
+   file (e.g., `paste0("^(DVTOT|TOTSLF)", yy, "$")` for dental visits and
+   out-of-pocket spending; they come out as `DVTOT` and `TOTSLF`), and add an
+   entry to the list of populations in `R/00_functions.R`.
+4. **For other event types**, swap `h248d` for another letter (section 2.1's
+   table) and change the columns kept in step 3 of the script.
+5. **Pooling years** gives larger populations: extract each year, stack the
+   CSVs, and divide the weights by the number of years (AHRQ's HC-036 file has
+   variance strata and PSUs that are consistent across years, if you also want
+   design-based standard errors).
+
+### 4.3 Trying the code without any data
+
+`R/00_make_example_data.R` writes synthetic files with the same columns to
+`data_example/`: spending with zeros and a long tail, overdispersed visit
+counts, bounded mental health scores, correlated baseline and follow-up
+values, and weights and design variables. They are made up (no result from
+them says anything about real people), but they let every script run, so the
+code can be learned before anything is downloaded. The scripts use them
+automatically whenever `data/meps_fyc.csv` does not exist, and say so.
+
+### 4.4 Defining the simulation populations
 
 `R/00_functions.R` then defines eight "populations" from the CSVs: an outcome
 vector and its survey weights, for adults (18+) with a positive weight and a
@@ -285,7 +356,7 @@ the most non-normal measures he examined.
 
 ---
 
-## 6. Six things to do with them
+## 6. Things to do with them
 
 ### 6.1 Planning a trial from a pilot's SD (`R/03_plasmode_sd_planning.R`)
 
@@ -419,29 +490,100 @@ A simulation calibrated with the "wrong" (but standard) family would have
 reached a much more pessimistic conclusion than the real data support. The
 plasmode approach sidesteps the choice of family entirely.
 
-### 6.5 Change score or ANCOVA? (`R/07_change_scores_vs_ancova.R`)
+### 6.5 Using a baseline measurement: change score, ANCOVA, and the alternatives (`R/07`, `R/08`, `R/09`)
 
-*The question.* With a baseline measurement, a trial can analyse the follow-up
+*The question.* A trial with a baseline measurement can analyse the follow-up
 alone, the change from baseline, or the follow-up adjusted for baseline
 (ANCOVA). With correlation ρ between baseline and follow-up, the change score
 beats the follow-up alone only when ρ > 0.5, and ANCOVA is never worse than
-either (Frison and Pocock 1992; Vickers and Altman 2001).
+either (Frison and Pocock 1992; Vickers and Altman 2001); in a randomized trial
+with complete data, ANCOVA is (asymptotically) as efficient as any analysis
+that uses the baseline linearly (Yang and Tsiatis 2001). The alternatives earn
+their place in situations that are common in practice: treatment effects that
+vary from person to person, follow-ups that are missing, and several
+follow-ups rather than one. The three scripts compare these analyses:
 
-*What we found* (Panel 27 adults, 2022 to 2023; a difference of 0.3 follow-up
-SDs; 2,000 plasmode trials at the size ANCOVA needs):
+| Method | What it is | When it should help |
+|---|---|---|
+| Follow-up only; change score | Difference in mean follow-up, or in mean change | Rarely; included as the usual baselines |
+| ANCOVA | Follow-up regressed on arm and baseline | The standard; efficient with complete data |
+| ANCOVA with interaction (Lin 2013) | Adds arm × (centred) baseline, robust (HC2) SE; the effect is averaged over everyone's baseline | Effects that vary with baseline; never less efficient than follow-up only |
+| cLDA / MMRM (Liang and Zeger 2000; Lu 2010; Mallinckrodt et al. 2008) | Baseline and follow-ups all treated as outcomes, with a common baseline mean and an unstructured covariance; likelihood-based | Missing follow-ups (valid under missing at random, MAR), missing baselines, several follow-ups |
+| Random-slope mixed model (Hedeker and Gibbons 2006) | Random intercept and slope per person; effect = arm × time | Several follow-ups, when the effect grows roughly linearly |
+| GEE (Liang and Zeger 1986) | Same mean model, exchangeable working correlation, robust SE | Several follow-ups; valid only when missingness is unrelated to the outcomes (MCAR) |
+| AIPW (Tsiatis et al. 2008) | Doubly robust: a model for the outcome and a model for dropout, each in baseline and arm; SE from the influence function (Hines et al. 2022) | Varying effects and MAR dropout together; non-linear baseline relationships |
 
-| Outcome | ρ | n per arm: follow-up / change / ANCOVA | Power at the ANCOVA size: follow-up / change / ANCOVA |
+#### 6.5.1 One follow-up, complete data, constant effect (`R/07_baseline_adjustment_methods.R`)
+
+Panel 27 adults (2022 to 2023); a difference of 0.3 follow-up SDs; trials at
+the size ANCOVA needs (2,000 with the difference and 2,000 without):
+
+| Outcome | ρ | n per arm: follow-up / change / ANCOVA | Power at the ANCOVA size: follow-up / change / ANCOVA / cLDA / Lin / AIPW |
 |---|---|---|---|
-| K6 | 0.66 | 175 / 116 / 99 | 55% / 73% / 80% |
-| VR-12 mental summary | 0.60 | 175 / 135 / 112 | 60% / 71% / 78% |
-| Total spending | 0.44 | 175 / 196 / 142 | 75% / 72% / 84% |
+| K6 | 0.66 | 175 / 116 / 99 | 56% / 75% / 81% / 81% / 81% / 81% |
+| VR-12 mental summary | 0.60 | 175 / 135 / 112 | 61% / 74% / 80% / 81% / 80% / 81% |
+| Total spending | 0.44 | 175 / 196 / 142 | 76% / 73% / 84% / 84% / 82% / 82% |
 
-For the mental health scores, ρ is above 0.5 and the change score helps; for
-spending it is below 0.5 and the change score is *worse* than ignoring the
-baseline, exactly as the theory says. ANCOVA gave close to its planned 80%
-power for the scores and more than planned for spending (the formula uses
-variances only, and with spending's tails the planned size is not the whole
-story).
+Every method was unbiased and had 93–96% coverage of nominal 95% intervals,
+and type I error between 4.4% and 6.6%. For the mental health scores ρ is above
+0.5 and the change score helps; for spending it is below 0.5 and the change
+score is *worse* than ignoring the baseline, exactly as the theory says. cLDA
+gave exactly the ANCOVA estimate (with complete data the two coincide), and the
+interaction model and AIPW were as good as ANCOVA for the scores and slightly
+less efficient for spending, where AIPW's influence-function SE was also too
+small (by 13–28%). In short: with one follow-up and complete data, nothing
+beats ANCOVA, and the others cost little.
+
+#### 6.5.2 Effects that vary, and follow-ups that are missing (`R/08_varying_effects_and_dropout.R`)
+
+The same panel, with two complications: an effect that varies with baseline
+(from half to one and a half times the average, larger for higher baseline
+values), and ~25% of follow-ups missing at random given baseline and arm (people
+with high baseline values drop out more, especially in the treatment arm).
+1,000 trials per setting; relative bias for the average treatment effect,
+coverage of 95% intervals, and power:
+
+| Setting | Method | K6 | VR-12 mental | Spending |
+|---|---|---|---|---|
+| Varying effect, complete data | ANCOVA | +2%, 95%, 80% | +1%, 96%, 82% | −3%, 96%, 82% |
+| | Lin / AIPW | +3% / +2%; 95% / 94% | +1% / +1%; 96% / 95% | −2% / −3%; 95% / 94% |
+| Constant effect, dropout | Follow-up only (complete cases) | −42%, 87% | −31%, 90% | −27%, 91% |
+| | Change score (complete cases) | +20%, 91% | +20%, 93% | +11%, 95% |
+| | ANCOVA (complete cases) = cLDA | 0%, 94%, 74% | +1%, 95%, 65% | −6%, 96%, 80% |
+| | Lin | 0%, 92%, 53% | +1%, 94%, 71% | +1%, 91%, 65% |
+| | AIPW | −2%, 88%, 57% | +1%, 93%, 72% | −1%, 85%, 67% |
+| Varying effect, dropout | ANCOVA (complete cases) = cLDA | −7%, 95%, 67% | −6%, 94%, 60% | −13%, 93%, 77% |
+| | Lin | +1%, 93%, 54% | −1%, 95%, 69% | +2%, 90%, 63% |
+| | AIPW | −2%, 88%, 57% | +1%, 93%, 71% | −2%, 85%, 66% |
+
+What this shows:
+
+- **With complete data, a varying effect does no harm**: in a 1:1 randomized
+  trial ANCOVA still estimates the average effect, and its usual SE was fine.
+- **Dropout that depends on baseline breaks the simple comparisons**: the
+  complete-case follow-up and change-score analyses were badly biased (−42% to
+  +20%), because the people who remain differ in baseline between the arms.
+  ANCOVA on complete cases stayed unbiased for the scores, because it compares
+  people with the same baseline, and the dropout depended only on baseline.
+- **Dropout plus a varying effect biases ANCOVA too** (−6% to −13%): ANCOVA's
+  single slope averages the effect over the baselines of the people who
+  *remain*, who are not the people randomized. The interaction model (with the
+  effect averaged over everyone's baseline) and AIPW removed the bias.
+- **cLDA gave exactly the complete-case ANCOVA estimate here.** With a complete
+  baseline and a single follow-up, the likelihood reduces to that regression,
+  so cLDA's advantage appears only with missing baselines or several follow-ups
+  (section 6.5.3), and it shares ANCOVA's single-slope assumption.
+- **Removing the bias costs precision, and AIPW's SE was too small.** With steep
+  differential dropout, the interaction model and AIPW lean on the few
+  high-baseline people left in the treatment arm; their SEs were about the same
+  as ANCOVA's for the VR-12, 30–40% larger for the K6, and 70–100% larger for
+  spending, and AIPW's simple influence-function SE understated its
+  variability (coverage 85–93%). A bootstrap SE (resampling people, refitting
+  both models) would be the safer choice with samples of this size.
+
+#### 6.5.3 Several follow-ups, with real missing data (`R/09_several_follow_ups.R`)
+
+RESULTS_09
 
 ### 6.6 Other ideas
 

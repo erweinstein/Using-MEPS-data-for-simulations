@@ -38,5 +38,6 @@ g <- ggplot(hd, aes(y, weight = w)) +
   facet_wrap(~label, scales = "free", ncol = 2) + theme_minimal(base_size = 11) +
   theme(axis.text.y = element_blank(), panel.grid.minor = element_blank()) +
   labs(x = NULL, y = NULL, title = "Eight MEPS outcomes used as simulation populations",
-       subtitle = "Weighted to US adults; MEPS 2023 (HC-251, HC-249, HC-248D) and Panel 27 (HC-252)")
+       subtitle = paste0("Weighted to US adults; ", if (file.exists(file.path(data_dir, "meps_info.txt")))
+         readLines(file.path(data_dir, "meps_info.txt"))[1] else paste("data in", data_dir)))
 ggsave("output/fig_populations.png", g, width = 9, height = 10, dpi = 200, bg = "white")
