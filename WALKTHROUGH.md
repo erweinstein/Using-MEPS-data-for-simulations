@@ -490,7 +490,7 @@ A simulation calibrated with the "wrong" (but standard) family would have
 reached a much more pessimistic conclusion than the real data support. The
 plasmode approach sidesteps the choice of family entirely.
 
-### 6.5 Using a baseline measurement: change score, ANCOVA, and the alternatives (`R/07`, `R/08`, `R/09`)
+### 6.5 Using a baseline measurement: change score, ANCOVA, and the alternatives (`R/07` to `R/10`)
 
 *The question.* A trial with a baseline measurement can analyse the follow-up
 alone, the change from baseline, or the follow-up adjusted for baseline
@@ -501,7 +501,8 @@ with complete data, ANCOVA is (asymptotically) as efficient as any analysis
 that uses the baseline linearly (Yang and Tsiatis 2001). The alternatives earn
 their place in situations that are common in practice: treatment effects that
 vary from person to person, follow-ups that are missing, and several
-follow-ups rather than one. The three scripts compare these analyses:
+follow-ups rather than one. Scripts 07 to 09 compare these analyses (and script 10
+tests two remedies for what they find):
 
 | Method | What it is | When it should help |
 |---|---|---|
@@ -638,9 +639,116 @@ What this shows:
   for spending the SE understated the variability by about 30–45%.
 - **In practice**, these results point to fitting the longitudinal model with
   arm-specific covariance matrices or an arm-by-baseline interaction when
-  effects may vary (not tested here), and to a bootstrap SE for AIPW.
+  effects may vary, and to a bootstrap SE for AIPW (both tested in section
+  6.5.4).
 
-#### 6.5.4 Taken together
+#### 6.5.4 Two remedies: MMRM fitted by arm, and a bootstrap SE for AIPW (`R/10_remedies.R`)
+
+Sections 6.5.2 and 6.5.3 left two suggestions untested. The first is to let the
+baseline-to-follow-up relationship differ by arm. We fit the MMRM separately in
+each arm, conditional on baseline: the follow-ups on time (as a factor), with a
+separate baseline slope at each time, an unstructured correlation and a
+separate variance at each time. Each arm then has its own covariance and its
+own baseline slopes, and the effect at the last follow-up is the difference
+between the two arms' predicted means, averaged over the baselines of everyone
+randomized (with a centred baseline, the difference of the two time-4
+intercepts). A second version uses a natural spline in baseline (3 df) at each
+time. With one follow-up and a complete baseline this is the same estimate as
+Lin's interaction ANCOVA, so in the one-follow-up setting Lin stands in for it.
+The second suggestion is a nonparametric bootstrap SE for AIPW (resampling
+people within arm and refitting both the outcome and the dropout model, B =
+200), with the percentile interval as a check. We also ran AIPW with linear
+(not spline) outcome and dropout models, to see whether the splines were
+behind the too-small SEs. 500 trials per setting, the same populations, sizes
+and dropout as in 6.5.2 and 6.5.3 (new random draws, so the reference methods
+differ a little from the tables above; the Monte Carlo SE of each relative bias
+is ~1.5–2%).
+
+*One follow-up* (the section 6.5.2 setting; relative bias, coverage of 95%
+intervals, power):
+
+| Scenario | Method | K6 | VR-12 mental | Spending |
+|---|---|---|---|---|
+| Constant effect, dropout | ANCOVA (complete cases) | −3%, 96%, 74% | 0%, 95%, 64% | −5%, 95%, 86% |
+| | Lin (= MMRM by arm) | −3%, 94%, 53% | 0%, 94%, 67% | +1%, 90%, 67% |
+| | AIPW, influence-function SE | −3%, 89%, 58% | +2%, 94%, 69% | −2%, 86%, 71% |
+| | AIPW, bootstrap SE | −3%, 96%, 42% | +2%, 96%, 65% | −2%, 97%, 45% |
+| | AIPW, bootstrap percentile interval | −3%, 95%, 47% | +2%, 96%, 67% | −2%, 93%, 55% |
+| | AIPW, linear models | −7%, 94%, 41% | 0%, 95%, 67% | −14%, 91%, 43% |
+| Varying effect, dropout | ANCOVA (complete cases) | −9%, 94%, 68% | −7%, 94%, 61% | −14%, 94%, 74% |
+| | Lin (= MMRM by arm) | +1%, 95%, 58% | −2%, 96%, 70% | −2%, 90%, 56% |
+| | AIPW, influence-function SE | +2%, 90%, 63% | −1%, 95%, 69% | −7%, 84%, 62% |
+| | AIPW, bootstrap SE | +2%, 96%, 47% | −1%, 95%, 66% | −7%, 97%, 38% |
+| | AIPW, bootstrap percentile interval | +2%, 94%, 50% | −1%, 94%, 67% | −7%, 96%, 47% |
+| | AIPW, linear models | −14%, 96%, 45% | −2%, 96%, 68% | −32%, 91%, 32% |
+
+*Three follow-ups* (the section 6.5.3 setting; the effect at the last
+follow-up):
+
+| Scenario | Method | K6 | VR-12 mental | Spending |
+|---|---|---|---|---|
+| A: constant effect, MEPS's own missing values | MMRM (one covariance) | −2%, 95%, 83% | +3%, 96%, 83% | −2%, 94%, 89% |
+| | MMRM by arm | −2%, 95%, 83% | +3%, 95%, 83% | −2%, 93%, 89% |
+| | MMRM by arm, spline in baseline | −2%, 95%, 81% | +3%, 96%, 84% | 0%, 90%, 87% |
+| | AIPW, influence-function SE | −2%, 95%, 81% | +2%, 95%, 84% | −3%, 93%, 90% |
+| | AIPW, bootstrap SE | −2%, 95%, 79% | +2%, 97%, 80% | −3%, 95%, 86% |
+| B: varying effect + MAR dropout | MMRM (one covariance) | −5%, 94%, 73% | −7%, 95%, 64% | −12%, 93%, 85% |
+| | MMRM by arm | +2%, 89%, 73% | −4%, 97%, 65% | −1%, 83%, 82% |
+| | MMRM by arm, spline in baseline | 0%, 88%, 66% | −1%, 97%, 64% | −2%, 78%, 68% |
+| | AIPW, influence-function SE | +2%, 90%, 63% | −2%, 95%, 68% | −3%, 85%, 76% |
+| | AIPW, bootstrap SE | +2%, 96%, 48% | −2%, 95%, 65% | −3%, 95%, 58% |
+| | AIPW, bootstrap percentile interval | +2%, 95%, 50% | −2%, 95%, 64% | −3%, 93%, 63% |
+
+What this shows:
+
+- **Fitting the MMRM by arm removes the bias.** In scenario B the one-covariance
+  MMRM was biased by −5% to −12% (as in section 6.5.3); fitted by arm, the bias
+  was −4% to +2% with a linear baseline term and −2% to 0% with the spline. With
+  one follow-up, Lin's interaction ANCOVA (the same estimate) did the same
+  (−2% to +1%, against −7% to −14% for complete-case ANCOVA). When nothing
+  varies (scenario A), fitting by arm cost nothing: the estimates and SEs were
+  almost the same as the usual MMRM's.
+- **But the by-arm MMRM's model-based SE was too small when it mattered.** In
+  scenario B it understated the variability by ~15% for the K6 and ~40% for
+  spending (coverage 89% and 83%; for spending the empirical SD is itself
+  inflated by a few extreme trials), and the spline version for spending was
+  unstable (its empirical SD was 2.3 times the linear version's; a spline in
+  raw spending is fitted to the few people with very high baselines who remain).
+  The averaging over everyone's baseline adds a term the SE leaves out, but a
+  rough calculation puts it well under 1% of the variance for the K6; most of the
+  shortfall is the model's variance assumptions (a variance that changes with
+  time but not with baseline, and normal tails), which the steep dropout makes
+  matter. A robust (sandwich) or bootstrap SE for the by-arm MMRM is the obvious
+  next step (not run here). Lin's HC2 SE, which is robust, was also a little
+  small for spending (coverage 90%), which is what one would expect of a
+  sandwich SE in arms of ~100 people with a heavy-tailed outcome.
+- **The bootstrap SE fixes AIPW's coverage.** Across both parts, AIPW with the
+  influence-function SE covered 84–95% of the time; with the bootstrap SE,
+  95–97%, and the percentile interval 93–96%. For the scores and for spending
+  with one follow-up, the mean bootstrap SE was within −4% to +8% of the
+  empirical SD; for spending with three follow-ups it was 25–30% smaller, but
+  that empirical SD is dominated by a few trials with extreme values, and
+  coverage was still 95%.
+- **The splines were only part of the cause of the small SEs.** AIPW with
+  linear models still had SEs that were too small for the K6 and spending (by
+  11–16%, against 19–33% with splines), and it was biased (−14% to −32% when
+  the effect varied): with both models wrong (dropout here
+  depends on the *rank* of the baseline, which is far from linear in spending)
+  the double robustness does not help. The small SE seems to come from the large
+  inverse-probability weights for the few high-baseline treated people who
+  remain, which the influence function estimates poorly in arms of this size.
+- **The price is precision, and it depends on the outcome.** Once the SEs are
+  honest, the methods that remove the bias need much bigger trials than ANCOVA
+  for the K6 and spending, and about the same for the VR-12. Comparing empirical
+  SDs in the varying-effect settings, AIPW's variance was ~2.1–2.3 times
+  ANCOVA's for the K6, ~3.5–3.7 times for spending and ~1.0–1.1 times for the
+  VR-12 (for the by-arm MMRM, ~1.5 times for the K6 and ~2.4 times for spending
+  with three follow-ups). It is worth noting that this is the price of
+  protection against a varying effect *combined* with steep, arm-dependent
+  dropout; when either is absent, ANCOVA or the usual MMRM is unbiased and much
+  more precise.
+
+#### 6.5.5 Taken together
 
 With complete data and one follow-up, ANCOVA is the analysis to beat, and
 nothing beat it. With MEPS's own (mostly intermittent, non-differential) missing
@@ -648,8 +756,14 @@ values, the longitudinal models and ANCOVA agreed. The methods separated only
 when effects varied with baseline *and* dropout depended on baseline and arm:
 then the analyses built on one common slope (ANCOVA, cLDA/MMRM, the random-slope
 model, GEE) were biased by 3–15%, and the analyses that let the slope differ by
-arm (ANCOVA with interaction, AIPW) removed most of the bias at a cost in
-precision and, for AIPW, with standard errors that need a bootstrap.
+arm (ANCOVA with interaction, MMRM fitted by arm, AIPW) removed most of the bias.
+They did so at a cost in precision (for the K6 and spending, roughly two to
+four times the variance), and with standard errors that need care: AIPW's
+influence-function SE and the by-arm MMRM's model-based SE were both too small,
+and a bootstrap SE brought AIPW's coverage back to 95–97%. For planning, this
+suggests choosing the primary analysis by how plausible the two complications
+are together, and sizing the trial for the analysis actually chosen (with its
+honest SE), not for ANCOVA.
 
 ### 6.6 Other ideas
 

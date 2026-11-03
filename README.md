@@ -87,6 +87,7 @@ source("R/06_parametric_vs_plasmode.R")    # calibrated two-part and NB models v
 source("R/07_baseline_adjustment_methods.R")  # change score, ANCOVA, cLDA, AIPW with the panel (~1-2 hours)
 source("R/08_varying_effects_and_dropout.R")   # the same when effects vary and follow-ups are missing (~30 min)
 source("R/09_several_follow_ups.R")            # three follow-ups with MEPS's real missing data: MMRM, mixed models, GEE (~1-2 hours)
+source("R/10_remedies.R")                      # MMRM fitted by arm, and a bootstrap SE for AIPW (~5-6 hours; resumes if stopped)
 ```
 
 Results go to `output/` (CSV tables and PNG figures). Times are from a modest
@@ -117,10 +118,11 @@ R/06_parametric_vs_plasmode.R     two-part (gamma, lognormal) and negative binom
 R/07_baseline_adjustment_methods.R  follow-up, change score, ANCOVA (with and without interaction), cLDA, AIPW
 R/08_varying_effects_and_dropout.R  the same methods when the effect varies with baseline and follow-ups are missing at random
 R/09_several_follow_ups.R         baseline + three follow-ups (four-year panels): MMRM, random-slope model, GEE, summary measures, AIPW
+R/10_remedies.R                   remedies for 08 and 09: MMRM fitted by arm (linear and spline in baseline), AIPW with a bootstrap SE
 docs/                             figures shown in WALKTHROUGH.md (from the 2023 files)
 data/                             the CSVs made by 01 (not in the repository; see data/README.md)
 data_example/                     the synthetic data made by 00_make_example_data.R (made on first use)
-output/                           tables and figures made by 02-09
+output/                           tables and figures made by 02-10
 ```
 
 ---
