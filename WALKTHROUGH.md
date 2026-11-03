@@ -583,7 +583,20 @@ What this shows:
 
 #### 6.5.3 Several follow-ups, with real missing data (`R/09_several_follow_ups.R`)
 
-RESULTS_09
+Panels 23 and 24 were followed for four years, so each person has up to four
+annual values of spending and four questionnaire values of the K6 and VR-12
+mental summary, with the gaps real people leave (intermittent as well as
+monotone). The script pools both panels and draws trials of people with an
+observed baseline, keeping each person's own pattern of missing values, with
+an effect that grows linearly to 0.3 SDs at the last follow-up. Scenario A has
+a constant effect and only MEPS's own missingness; scenario B adds an effect
+that varies with baseline and extra dropout that depends on baseline and arm.
+It compares ANCOVA on the last follow-up (complete cases), ANCOVA on the mean
+of each person's follow-ups (a summary measure), MMRM (the cLDA form, with an
+unstructured covariance), a random-intercept, random-slope mixed model, GEE
+with an exchangeable working correlation, and AIPW for the last follow-up.
+
+*(The results of this comparison will be added here when the run finishes.)*
 
 ### 6.6 Other ideas
 
