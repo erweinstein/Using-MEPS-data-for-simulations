@@ -595,8 +595,61 @@ It compares ANCOVA on the last follow-up (complete cases), ANCOVA on the mean
 of each person's follow-ups (a summary measure), MMRM (the cLDA form, with an
 unstructured covariance), a random-intercept, random-slope mixed model, GEE
 with an exchangeable working correlation, and AIPW for the last follow-up.
+500 trials per setting (pooled panels: 5,687 adults for the K6, 5,973 for the
+VR-12, 9,740 for spending; 77–99% of them have every value):
 
-*(The results of this comparison will be added here when the run finishes.)*
+| Scenario | Method | K6 | VR-12 mental | Spending |
+|---|---|---|---|---|
+| A: constant effect, MEPS's own missing values | ANCOVA, last follow-up | +1%, 95%, 80% | +4%, 95%, 83% | −2%, 95%, 91% |
+| | MMRM | +1%, 94%, 80% | +4%, 95%, 83% | −2%, 95%, 91% |
+| | Random-slope model | +1%, 95%, 80% | +4%, 95%, 84% | −1%, 97%, 87% |
+| | GEE (exchangeable) | +1%, 95%, 81% | +4%, 95%, 83% | −2%, 95%, 91% |
+| | AIPW, last follow-up | +1%, 94%, 79% | +5%, 95%, 84% | 0%, 94%, 90% |
+| | Summary measure (mean of follow-ups) | +3%, 95%, 67% | +6%, 93%, 69% | −1%, 96%, 81% |
+| B: varying effect + MAR dropout | ANCOVA, last follow-up | −5%, 96%, 68% | −5%, 96%, 60% | −15%, 91%, 86% |
+| | MMRM | −4%, 95%, 71% | −4%, 95%, 65% | −12%, 92%, 86% |
+| | Random-slope model | −4%, 94%, 74% | −4%, 95%, 69% | −11%, 94%, 77% |
+| | GEE (exchangeable) | −8%, 94%, 69% | −3%, 96%, 66% | −15%, 91%, 84% |
+| | AIPW, last follow-up | +3%, 87%, 62% | +1%, 95%, 69% | −4%, 89%, 79% |
+| | Summary measure | −7%, 94%, 55% | −7%, 96%, 53% | −13%, 94%, 71% |
+
+(Each cell: relative bias for the target, coverage of 95% intervals, power.)
+
+What this shows:
+
+- **With MEPS's own missing values (scenario A), every method worked**, and
+  MMRM, GEE and ANCOVA on the last follow-up gave nearly identical answers. That
+  is because most of the gaps in these panels are in the middle years and are
+  unrelated to arm (only 1–2.5% of people with a baseline miss the last value),
+  so there was little for the longitudinal models to recover. (The +4% for
+  the VR-12, shared by every method, is about 2.5 Monte Carlo SEs from zero.)
+- **The summary measure answers a different question** (the average effect
+  over the follow-ups, which is smaller when the effect builds over time) and
+  had less power for it (53–81%).
+- **When the effect varies and dropout depends on baseline and arm (scenario
+  B), the likelihood-based models did not remove the bias.** MMRM and the
+  random-slope model are valid under MAR only if their model is right, and both
+  assume one covariance matrix (so one baseline-to-follow-up relationship) for
+  both arms; with an effect that varies by baseline, that is wrong. They were a
+  little less biased than complete-case ANCOVA for the scores (−4% against −5%)
+  and for spending (−11% to −12% against −15%). AIPW, which models dropout
+  directly and lets the outcome model differ by arm, was close to unbiased
+  (−4% to +3%), but again its simple SE was too small (coverage 87–95%), and
+  for spending the SE understated the variability by about 30–45%.
+- **In practice**, these results point to fitting the longitudinal model with
+  arm-specific covariance matrices or an arm-by-baseline interaction when
+  effects may vary (not tested here), and to a bootstrap SE for AIPW.
+
+#### 6.5.4 Taken together
+
+With complete data and one follow-up, ANCOVA is the analysis to beat, and
+nothing beat it. With MEPS's own (mostly intermittent, non-differential) missing
+values, the longitudinal models and ANCOVA agreed. The methods separated only
+when effects varied with baseline *and* dropout depended on baseline and arm:
+then the analyses built on one common slope (ANCOVA, cLDA/MMRM, the random-slope
+model, GEE) were biased by 3–15%, and the analyses that let the slope differ by
+arm (ANCOVA with interaction, AIPW) removed most of the bias at a cost in
+precision and, for AIPW, with standard errors that need a bootstrap.
 
 ### 6.6 Other ideas
 
