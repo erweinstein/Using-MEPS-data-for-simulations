@@ -509,7 +509,7 @@ tests two remedies for what they find):
 | Follow-up only; change score | Difference in mean follow-up, or in mean change | Rarely; included as the usual baselines |
 | ANCOVA | Follow-up regressed on arm and baseline | The standard; efficient with complete data |
 | ANCOVA with interaction (Lin 2013) | Adds arm × (centred) baseline, robust (HC2) SE; the effect is averaged over everyone's baseline | Effects that vary with baseline; never less efficient than follow-up only |
-| cLDA / MMRM (Liang and Zeger 2000; Lu 2010; Mallinckrodt et al. 2008) | Baseline and follow-ups all treated as outcomes, with a common baseline mean and an unstructured covariance; likelihood-based | Missing follow-ups (valid under missing at random, MAR), missing baselines, several follow-ups |
+| cLDA / MMRM (Liang and Zeger 2000; Lu 2010; Mallinckrodt et al. 2008; fitted by likelihood as in Laird, Lange and Stram 1987) | Baseline and follow-ups all treated as outcomes, with a common baseline mean and an unstructured covariance; likelihood-based | Missing follow-ups (valid under missing at random, MAR), missing baselines, several follow-ups |
 | Random-slope mixed model (Hedeker and Gibbons 2006) | Random intercept and slope per person; effect = arm × time | Several follow-ups, when the effect grows roughly linearly |
 | GEE (Liang and Zeger 1986) | Same mean model, exchangeable working correlation, robust SE | Several follow-ups; valid only when missingness is unrelated to the outcomes (MCAR) |
 | AIPW (Tsiatis et al. 2008) | Doubly robust: a model for the outcome and a model for dropout, each in baseline and arm; SE from the influence function (Hines et al. 2022) | Varying effects and MAR dropout together; non-linear baseline relationships |
@@ -840,8 +840,27 @@ Some cautions:
 - Frison, L. and S. J. Pocock (1992). Repeated measures in clinical trials:
   analysis using mean summary statistics and its implications for design.
   *Statistics in Medicine* 11(13), 1685–1704.
+- Hedeker, D. and R. D. Gibbons (2006). *Longitudinal Data Analysis*. Wiley.
+- Hines, O., O. Dukes, K. Diaz-Ordaz and S. Vansteelandt (2022). Demystifying
+  statistical learning based on efficient influence functions. *The American
+  Statistician* 76(3), 292–304.
+- Laird, N., N. Lange and D. Stram (1987). Maximum likelihood computations with
+  repeated measures: application of the EM algorithm. *Journal of the American
+  Statistical Association* 82(397), 97–105.
+- Liang, K.-Y. and S. L. Zeger (1986). Longitudinal data analysis using
+  generalized linear models. *Biometrika* 73(1), 13–22.
+- Liang, K.-Y. and S. L. Zeger (2000). Longitudinal data analysis of continuous
+  and discrete responses for pre-post designs. *Sankhyā: The Indian Journal of
+  Statistics, Series B* 62(1), 134–148.
+- Lin, W. (2013). Agnostic notes on regression adjustments to experimental data:
+  reexamining Freedman's critique. *Annals of Applied Statistics* 7(1), 295–318.
+- Lu, K. (2010). On efficiency of constrained longitudinal data analysis versus
+  longitudinal analysis of covariance. *Biometrics* 66(3), 891–896.
 - Lumley, T. (2004). Analysis of complex survey samples. *Journal of
   Statistical Software* 9(8), 1–19.
+- Mallinckrodt, C. H., P. W. Lane, D. Schnell, Y. Peng and J. P. Mancuso (2008).
+  Recommendations for the primary analysis of continuous endpoints in
+  longitudinal clinical trials. *Drug Information Journal* 42(4), 303–319.
 - Manning, W. G. and J. Mullahy (2001). Estimating log models: to transform or
   not to transform? *Journal of Health Economics* 20(4), 461–494.
 - Micceri, T. (1989). The unicorn, the normal curve, and other improbable
@@ -854,7 +873,13 @@ Some cautions:
   231–241.
 - Thompson, S. G. and J. A. Barber (2000). How should cost data in pragmatic
   randomised trials be analysed? *BMJ* 320(7243), 1197–1200.
+- Tsiatis, A. A., M. Davidian, M. Zhang and X. Lu (2008). Covariate adjustment
+  for two-sample treatment comparisons in randomized clinical trials: a
+  principled yet flexible approach. *Statistics in Medicine* 27(23), 4658–4677.
 - Vickers, A. J. and D. G. Altman (2001). Analysing controlled trials with
   baseline and follow up measurements. *BMJ* 323(7321), 1123–1124.
+- Yang, L. and A. A. Tsiatis (2001). Efficiency study of estimators for a
+  treatment effect in a pretest–posttest trial. *The American Statistician*
+  55(4), 314–321.
 - Agency for Healthcare Research and Quality. Medical Expenditure Panel Survey
   public use files HC-251, HC-249, HC-248D and HC-252 (see `CITATION.md`).
