@@ -490,7 +490,7 @@ A simulation calibrated with the "wrong" (but standard) family would have
 reached a much more pessimistic conclusion than the real data support. The
 plasmode approach sidesteps the choice of family entirely.
 
-### 6.5 Using a baseline measurement: change score, ANCOVA, and the alternatives (`R/07` to `R/10`)
+### 6.5 Using a baseline measurement: change score, ANCOVA, and the alternatives (`R/07` to `R/11`)
 
 *The question.* A trial with a baseline measurement can analyse the follow-up
 alone, the change from baseline, or the follow-up adjusted for baseline
@@ -501,8 +501,9 @@ with complete data, ANCOVA is (asymptotically) as efficient as any analysis
 that uses the baseline linearly (Yang and Tsiatis 2001). The alternatives earn
 their place in situations that are common in practice: treatment effects that
 vary from person to person, follow-ups that are missing, and several
-follow-ups rather than one. Scripts 07 to 09 compare these analyses (and script 10
-tests two remedies for what they find):
+follow-ups rather than one. Scripts 07 to 09 compare these analyses (script 10
+tests two remedies for what they find, and script 11 turns to dropout that
+depends on the missing values themselves):
 
 | Method | What it is | When it should help |
 |---|---|---|
@@ -748,7 +749,121 @@ What this shows:
   dropout; when either is absent, ANCOVA or the usual MMRM is unbiased and much
   more precise.
 
-#### 6.5.5 Taken together
+#### 6.5.5 Dropout that depends on the missing values: a delta-adjusted sensitivity analysis and its tipping point (`R/11_mnar_sensitivity.R`)
+
+Everything so far assumed that whether a value is missing depends only on what
+was observed (MAR). If people leave because they are doing badly at the visit
+they miss, dropout is *missing not at random* (MNAR), and the observed data
+cannot tell the two apart. The usual advice (National Research Council 2010;
+ICH E9(R1), 2019) is to keep an analysis valid under MAR as the primary one and
+add a sensitivity analysis. The most common is the delta-adjusted
+pattern-mixture model (Little 1994; Daniels and Hogan 2008; Ratitch, O'Kelly
+and Tosiello 2013; Cro et al. 2020): impute the missing values under MAR, then
+shift the imputed values by δ, the assumed difference in mean between the
+people who dropped out and those with the same history who stayed, and find
+the **tipping point**, the δ at which the conclusion changes (Yan, Lee and Li
+2009). (Daniels et al. 2015 use the same idea for repeated-attempt designs, with
+δ informed by how hard people were to reach.)
+
+The setting is the three-follow-up one of section 6.5.3 with a constant effect
+that grows to 0.3 SDs of the last value, restricted to adults who have all four
+values (4,372 for the K6, 5,018 for the VR-12, 9,232 for spending), so that the
+only missing values are the ones we create and the answer is known. Dropout is
+monotone, about 25% in each arm by the last follow-up, and its hazard depends on
+the normal score of a value, low values (against the direction of the effect)
+leaving more often: in **MAR** on the previous, observed value; in **MNAR1** on
+the current, missing value, the same way in both arms; in **MNAR2** on the
+current value in the treated arm only (treated people who are not benefiting
+leave, a "lack of efficacy" pattern), with control dropout completely at
+random. Each trial has the size needed for 80% power with ANCOVA, inflated for
+25% dropout (147, 164 and 220 per arm). The methods: ANCOVA before any dropout
+(the reference); ANCOVA on complete cases; the MMRM of section 6.5.3; multiple
+imputation under MAR (sequential regressions on the earlier values, by arm,
+proper draws, M = 20, ANCOVA in each completed data set, Rubin's rules); the
+same imputations shifted by each arm's *true* δ (computed from the population,
+so not available in practice; it shows what the adjustment does when δ is
+right); and reference-based "copy reference" imputation, in which treated
+dropouts are imputed from the control arm's models given their own history
+(Carpenter, Roger and Kenward 2013). 500 trials per setting.
+
+| Scenario | Method | K6 | VR-12 mental | Spending |
+|---|---|---|---|---|
+| MAR | MMRM | 0%, 94%, 76% | 0%, 94%, 87% | −4%, 94%, 89% |
+| | MI under MAR | −1%, 96%, 76% | 0%, 92%, 81% | −3%, 97%, 89% |
+| | Copy reference | −22%, 96%, 55% | −21%, 93%, 72% | −26%, 93%, 75% |
+| MNAR1: same in both arms | MMRM | −7%, 95%, 72% | +4%, 95%, 92% | −5%, 96%, 88% |
+| | MI under MAR | −7%, 96%, 73% | +4%, 93%, 89% | −5%, 98%, 88% |
+| | MI shifted by the true δ | −4%, 96%, 75% | +1%, 93%, 86% | +2%, 98%, 90% |
+| MNAR2: treated non-responders leave | Complete-case ANCOVA | +16%, 93%, 90% | +57%, 60%, 100% | +10%, 95%, 94% |
+| | MMRM | +12%, 93%, 89% | +47%, 71%, 100% | +8%, 95%, 93% |
+| | MI under MAR | +12%, 94%, 88% | +52%, 65%, 100% | +7%, 94%, 93% |
+| | MI shifted by the true δ | −4%, 94%, 76% | +1%, 94%, 85% | −3%, 96%, 89% |
+| | Copy reference | −12%, 98%, 74% | +14%, 98%, 98% | −17%, 96%, 84% |
+
+(Each cell: relative bias for the effect at the last follow-up as if no one had
+left, coverage of 95% intervals, power. The Monte Carlo SE of each relative
+bias is ~1.3–2%; the reference ANCOVA was within −4% to +1%.)
+
+The true δ for the treated arm, and what the tipping-point analysis of the MAR
+imputation found (δ in SDs of the last value; the control arm left unshifted):
+
+| | K6 | VR-12 mental | Spending |
+|---|---|---|---|
+| True δ, treated arm: MAR, MNAR1, MNAR2 | −0.01, −0.15, −0.18 | −0.01, −0.42, −0.60 | −0.08, −0.10, −0.13 |
+| Tipping point, median (MAR / MNAR1 / MNAR2) | −0.29 / −0.25 / −0.48 | −0.40 / −0.48 / −0.99 | −0.47 / −0.46 / −0.63 |
+| Still significant if δ = −0.25 (MAR / MNAR1 / MNAR2) | 54% / 50% / 71% | 62% / 72% / 97% | 72% / 73% / 84% |
+| Still significant if δ = −0.5 | 33% / 25% / 47% | 40% / 48% / 91% | 46% / 44% / 62% |
+
+What this shows:
+
+- **When dropout depends on the missing values the same way in both arms
+  (MNAR1), the MAR analyses were nearly unbiased for the difference** (−7% to
+  +4%; for the K6, about −3% beyond what the reference ANCOVA showed by chance in
+  those trials), though each arm's mean was off: the δ of each arm was large
+  (−0.18 and −0.15 SDs for the K6, −0.39 and −0.42 for the VR-12) but similar,
+  so it cancelled. It is worth noting that this cancellation is an assumption
+  too, and the δ-adjusted analysis with the same δ in both arms says nothing
+  about it.
+- **When only treated non-responders leave (MNAR2), every MAR analysis
+  overstated the effect**: by 7–16% for spending and the K6, and by about half
+  for the VR-12, with coverage 60–71%. The same dropout mechanism produced very
+  different δs (−0.13 to −0.60 SDs) because it acts on ranks: the VR-12's long
+  lower tail puts the people who leave far below their predictions, while for
+  spending the low ranks are bunched near zero. A δ cannot be borrowed from one
+  outcome for another.
+- **With the right δ, the adjustment removed the bias** (−4% to +2% in every
+  setting), and its intervals covered 92–98%. In practice δ is not known; the
+  tipping point turns the question into "how much worse would treated dropouts
+  have to be?", which clinicians can judge. Here the tipping point was beyond
+  the true δ in 76–89% of the MNAR2 trials, about the same as the share that
+  would have been significant under the correct analysis.
+- **Copy-reference imputation is conservative by design.** It answers a
+  different question (what if treated dropouts behaved like controls after
+  leaving, close to a treatment-policy estimand when dropouts stop treatment),
+  so against the "everyone followed" target here it was biased down by 12–27%
+  (up by 14% for the VR-12 in MNAR2, where the MAR bias was so large), with
+  less power.
+- **For planning, the tipping point is easy to anticipate.** Shifting the
+  treated arm's imputed last values by δ (in SDs, σ) moves the estimate by about
+  δ·π₁·σ, π₁ being the treated arm's dropout share, and leaves the SE almost
+  unchanged. So the chance that the result survives a shift δ is close to the
+  power for an effect of Δ − |δ|π₁σ, when the MAR analysis itself is
+  unbiased. For the K6 under MAR this formula gives 77%, 57%, 35% and 7% at
+  δ = 0, −0.25, −0.5 and −1 (simulated 76%, 54%, 33% and 6%); for all three
+  outcomes under MAR it agreed with the simulation within 2.4 points. (Under
+  MNAR the MAR estimate is itself biased, so the shares in the table above
+  differ from the formula, upward in MNAR2.) A trial meant to
+  keep 80% power under a pre-specified δ should be sized for Δ − |δ|π₁σ: with Δ
+  = 0.3σ and 25% dropout, that multiplies n by 1.6 for δ = −0.25 and by 2.9 for
+  δ = −0.5 (and reducing dropout is far cheaper than enlarging the trial: at
+  10% dropout the factors are 1.2 and 1.4).
+- **Two smaller points.** MI under MAR (fitted by arm, with linear
+  imputation models) had a larger empirical SE than the MMRM for the VR-12
+  (1.00 against 0.88) and its SE was ~7% too small (coverage 92%); and for
+  spending, MAR methods were ~3–5% low even under MAR, because a linear
+  imputation (or MMRM) model is only an approximation for spending.
+
+#### 6.5.6 Taken together
 
 With complete data and one follow-up, ANCOVA is the analysis to beat, and
 nothing beat it. With MEPS's own (mostly intermittent, non-differential) missing
@@ -763,7 +878,12 @@ influence-function SE and the by-arm MMRM's model-based SE were both too small,
 and a bootstrap SE brought AIPW's coverage back to 95–97%. For planning, this
 suggests choosing the primary analysis by how plausible the two complications
 are together, and sizing the trial for the analysis actually chosen (with its
-honest SE), not for ANCOVA.
+honest SE), not for ANCOVA. And when dropout may depend on the
+missing values themselves, no analysis of the observed data settles it: the
+MAR analyses were nearly unbiased when the mechanism was the same in both arms
+and badly biased when only treated non-responders left, a δ-adjusted analysis
+with a pre-specified δ and its tipping point make the dependence visible, and a
+trial meant to survive a given δ has to be sized for it (section 6.5.5).
 
 ### 6.6 Other ideas
 
@@ -778,7 +898,10 @@ The same files support many other exercises, for example:
   SEs for domains of different sizes, or study what happens to a model-based
   analysis that ignores the weights.
 - **Missing data**: delete values from the complete cases under a chosen
-  mechanism (MCAR, MAR, MNAR) and compare methods against the known answer.
+  mechanism (MCAR, MAR, MNAR) and compare methods against the known answer
+  (section 6.5.5 does this for monotone dropout; intermittent MNAR patterns,
+  selection models and Bayesian pattern-mixture models with a prior on δ, as
+  in Daniels and Hogan 2008, are natural next steps).
 - **Event-level clustering**: the stays file has several stays for some
   people (1,611 adult stays from 1,236 people), a ready-made example for
   cluster-robust SEs and multilevel models.
@@ -828,6 +951,20 @@ Some cautions:
   775–782.
 - Browne, R. H. (1995). On the use of a pilot sample for sample size
   determination. *Statistics in Medicine* 14(17), 1933–1940.
+- Carpenter, J. R., J. H. Roger and M. G. Kenward (2013). Analysis of
+  longitudinal trials with protocol deviation: a framework for relevant,
+  accessible assumptions, and inference via multiple imputation. *Journal of
+  Biopharmaceutical Statistics* 23(6), 1352–1371.
+- Cro, S., T. P. Morris, M. G. Kenward and J. R. Carpenter (2020). Sensitivity
+  analysis for clinical trials with missing continuous outcome data using
+  controlled multiple imputation: a practical guide. *Statistics in Medicine*
+  39(21), 2815–2842.
+- Daniels, M. J. and J. W. Hogan (2008). *Missing Data in Longitudinal
+  Studies: Strategies for Bayesian Modeling and Sensitivity Analysis*. Chapman
+  & Hall/CRC.
+- Daniels, M. J., D. Jackson, W. Feng and I. R. White (2015). Pattern mixture
+  models for the analysis of repeated attempt designs. *Biometrics* 71(4),
+  1160–1167.
 - Duan, N., W. G. Manning, C. N. Morris and J. P. Newhouse (1983). A comparison
   of alternative models for the demand for medical care. *Journal of Business
   & Economic Statistics* 1(2), 115–126.
@@ -844,6 +981,9 @@ Some cautions:
 - Hines, O., O. Dukes, K. Diaz-Ordaz and S. Vansteelandt (2022). Demystifying
   statistical learning based on efficient influence functions. *The American
   Statistician* 76(3), 292–304.
+- ICH (2019). E9(R1) addendum on estimands and sensitivity analysis in
+  clinical trials to the guideline on statistical principles for clinical
+  trials. International Council for Harmonisation.
 - Laird, N., N. Lange and D. Stram (1987). Maximum likelihood computations with
   repeated measures: application of the EM algorithm. *Journal of the American
   Statistical Association* 82(397), 97–105.
@@ -854,6 +994,8 @@ Some cautions:
   Statistics, Series B* 62(1), 134–148.
 - Lin, W. (2013). Agnostic notes on regression adjustments to experimental data:
   reexamining Freedman's critique. *Annals of Applied Statistics* 7(1), 295–318.
+- Little, R. J. A. (1994). A class of pattern-mixture models for normal
+  incomplete data. *Biometrika* 81(3), 471–483.
 - Lu, K. (2010). On efficiency of constrained longitudinal data analysis versus
   longitudinal analysis of covariance. *Biometrics* 66(3), 891–896.
 - Lumley, T. (2004). Analysis of complex survey samples. *Journal of
@@ -868,9 +1010,16 @@ Some cautions:
 - Morris, T. P., I. R. White and M. J. Crowther (2019). Using simulation
   studies to evaluate statistical methods. *Statistics in Medicine* 38(11),
   2074–2102.
+- National Research Council (2010). *The Prevention and Treatment of Missing
+  Data in Clinical Trials*. National Academies Press, Washington, DC.
 - Rao, J. N. K. and C. F. J. Wu (1988). Resampling inference with complex
   survey data. *Journal of the American Statistical Association* 83(401),
   231–241.
+- Ratitch, B., M. O'Kelly and R. Tosiello (2013). Missing data in clinical
+  trials: from clinical assumptions to statistical analysis using pattern
+  mixture models. *Pharmaceutical Statistics* 12(6), 337–347.
+- Rubin, D. B. (1987). *Multiple Imputation for Nonresponse in Surveys*.
+  Wiley.
 - Thompson, S. G. and J. A. Barber (2000). How should cost data in pragmatic
   randomised trials be analysed? *BMJ* 320(7243), 1197–1200.
 - Tsiatis, A. A., M. Davidian, M. Zhang and X. Lu (2008). Covariate adjustment
@@ -878,6 +1027,9 @@ Some cautions:
   principled yet flexible approach. *Statistics in Medicine* 27(23), 4658–4677.
 - Vickers, A. J. and D. G. Altman (2001). Analysing controlled trials with
   baseline and follow up measurements. *BMJ* 323(7321), 1123–1124.
+- Yan, X., S. Lee and N. Li (2009). Missing data handling methods in medical
+  device clinical trials. *Journal of Biopharmaceutical Statistics* 19(6),
+  1085–1098.
 - Yang, L. and A. A. Tsiatis (2001). Efficiency study of estimators for a
   treatment effect in a pretest–posttest trial. *The American Statistician*
   55(4), 314–321.
