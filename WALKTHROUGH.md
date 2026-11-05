@@ -720,7 +720,7 @@ What this shows:
   shortfall is the model's variance assumptions (a variance that changes with
   time but not with baseline, and normal tails), which the steep dropout makes
   matter. A robust (sandwich) or bootstrap SE for the by-arm MMRM is the obvious
-  next step (not run here). Lin's HC2 SE, which is robust, was also a little
+  next step (tested below, `R/12`). Lin's HC2 SE, which is robust, was also a little
   small for spending (coverage 90%), which is what one would expect of a
   sandwich SE in arms of ~100 people with a heavy-tailed outcome.
 - **The bootstrap SE fixes AIPW's coverage.** Across both parts, AIPW with the
@@ -748,6 +748,50 @@ What this shows:
   protection against a varying effect *combined* with steep, arm-dependent
   dropout; when either is absent, ANCOVA or the usual MMRM is unbiased and much
   more precise.
+
+*Follow-up: honest SEs for the MMRM fitted by arm* (`R/12_robust_se_mmrm_by_arm.R`).
+The same fits, with two other standard errors for the by-arm estimate: a
+cluster-robust (sandwich) SE with the CR2 small-sample correction, people as
+clusters (Bell and McCaffrey 2002; Pustejovsky and Tipton 2018; the
+clubSandwich package), for each arm's time-4 mean and combined as before; and
+a nonparametric bootstrap of the whole procedure (people resampled within arm,
+both arms refitted, B = 100). The usual MMRM with the same two SEs is shown for
+comparison. 500 trials in scenario A; 150 in scenario B, where each trial needs
+200 more MMRM fits for the bootstrap (new draws, so the numbers differ a little
+from the tables above). Each cell gives the ratio of the mean SE to the
+empirical SD of the estimates, then coverage of 95% intervals:
+
+| Scenario | Method and SE | K6 | VR-12 mental | Spending |
+|---|---|---|---|---|
+| A: constant effect, MEPS's own missing values | MMRM, model-based | 0.99, 94% | 0.95, 93% | 0.86, 95% |
+| | MMRM by arm, model-based | 0.98, 94% | 0.95, 93% | 0.83, 94% |
+| | MMRM by arm, sandwich (CR2) | 0.99, 94% | 0.95, 94% | 0.85, 95% |
+| B: varying effect + MAR dropout | MMRM, model-based | 0.99, 93% | 1.08, 95% | 0.88, 95% |
+| | MMRM by arm, model-based | 0.80, 87% | 1.16, 99% | 0.66, 87% |
+| | MMRM by arm, sandwich (CR2) | 0.90, 92% | 1.11, 98% | 0.79, 95% |
+| | MMRM by arm, bootstrap | 0.92, 91% | 1.11, 95% | 0.89, 97% |
+
+(In scenario B the relative bias was +4%, −4% and −1% for the by-arm MMRM,
+against −3%, −7% and −9% for the usual MMRM. With 150 trials, the Monte Carlo
+SE of each coverage is ~2% and of each SE ratio ~0.06.)
+
+- **The sandwich and the bootstrap repair most of the shortfall.** Where the
+  model-based SE of the by-arm MMRM was too small (scenario B, K6 and
+  spending: ratios 0.80 and 0.66, coverage 87%), the CR2 sandwich raised the
+  ratios to 0.90 and 0.79 (coverage 92% and 95%) and the bootstrap to 0.92 and
+  0.89 (91% and 97%). For the K6 both remain a little short. For the VR-12 every
+  SE was somewhat too large, so nothing needed repairing.
+- **They cost nothing when nothing is wrong.** In scenario A the sandwich SE
+  was within 4% of the model-based one.
+- **For the usual MMRM the sandwich changed almost nothing** (ratios within
+  0.01). With a mean for every time and arm and an unstructured covariance, that
+  model's SE is already close to robust; what it cannot fix is its bias.
+- **Honest SEs show the real price of protection.** With the sandwich, power in
+  scenario B was 65% for the K6 and 82% for spending (bootstrap: 64% and 71%),
+  against 71% and 86% with the too-small model-based SE. For planning, size a
+  trial analysed this way with the robust SE in mind (here roughly the
+  empirical variance, 1.6 to 2 times the usual MMRM's for the K6 and spending),
+  not with the model-based one.
 
 #### 6.5.5 Dropout that depends on the missing values: a delta-adjusted sensitivity analysis and its tipping point (`R/11_mnar_sensitivity.R`)
 
@@ -874,8 +918,9 @@ model, GEE) were biased by 3–15%, and the analyses that let the slope differ b
 arm (ANCOVA with interaction, MMRM fitted by arm, AIPW) removed most of the bias.
 They did so at a cost in precision (for the K6 and spending, roughly two to
 four times the variance), and with standard errors that need care: AIPW's
-influence-function SE and the by-arm MMRM's model-based SE were both too small,
-and a bootstrap SE brought AIPW's coverage back to 95–97%. For planning, this
+influence-function SE and the by-arm MMRM's model-based SE were both too small;
+a bootstrap SE brought AIPW's coverage back to 95–97%, and a sandwich (CR2) or
+bootstrap SE brought the by-arm MMRM's to 91–98%. For planning, this
 suggests choosing the primary analysis by how plausible the two complications
 are together, and sizing the trial for the analysis actually chosen (with its
 honest SE), not for ANCOVA. And when dropout may depend on the
@@ -944,6 +989,9 @@ Some cautions:
 
 ## 8. References
 
+- Bell, R. M. and D. F. McCaffrey (2002). Bias reduction in standard errors for
+  linear regression with multi-stage samples. *Survey Methodology* 28(2),
+  169–181.
 - Blanca, M. J., J. Arnau, D. López-Montiel, R. Bono and R. Bendayan (2013).
   Skewness and kurtosis in real data samples. *Methodology* 9(2), 78–84.
 - Bonett, D. G. (2006). Approximate confidence interval for standard deviation
@@ -1012,6 +1060,9 @@ Some cautions:
   2074–2102.
 - National Research Council (2010). *The Prevention and Treatment of Missing
   Data in Clinical Trials*. National Academies Press, Washington, DC.
+- Pustejovsky, J. E. and E. Tipton (2018). Small-sample methods for
+  cluster-robust variance estimation and hypothesis testing in fixed effects
+  models. *Journal of Business & Economic Statistics* 36(4), 672–683.
 - Rao, J. N. K. and C. F. J. Wu (1988). Resampling inference with complex
   survey data. *Journal of the American Statistical Association* 83(401),
   231–241.

@@ -89,13 +89,14 @@ source("R/08_varying_effects_and_dropout.R")   # the same when effects vary and 
 source("R/09_several_follow_ups.R")            # three follow-ups with MEPS's real missing data: MMRM, mixed models, GEE (~1-2 hours)
 source("R/10_remedies.R")                      # MMRM fitted by arm, and a bootstrap SE for AIPW (~5-6 hours; resumes if stopped)
 source("R/11_mnar_sensitivity.R")              # dropout that depends on the missing values: MAR analyses, delta-adjusted MI, tipping points (~1-2 hours)
+source("R/12_robust_se_mmrm_by_arm.R")         # sandwich (CR2) and bootstrap SEs for the MMRM fitted by arm (~4-6 hours; resumes if stopped)
 ```
 
 Results go to `output/` (CSV tables and PNG figures). Times are from a modest
 two-core machine; the slow ones can be shortened by lowering `REPS` at the top.
 
 **Dependencies.** R (4.1 or later, for the `|>` pipe), with `haven`, `dplyr`,
-`ggplot2`, `survey`, `sandwich`, `nlme`, `geepack` and `MASS` (each script installs what
+`ggplot2`, `survey`, `sandwich`, `nlme`, `geepack`, `clubSandwich` and `MASS` (each script installs what
 it needs if it is missing).
 
 ---
@@ -121,10 +122,11 @@ R/08_varying_effects_and_dropout.R  the same methods when the effect varies with
 R/09_several_follow_ups.R         baseline + three follow-ups (four-year panels): MMRM, random-slope model, GEE, summary measures, AIPW
 R/10_remedies.R                   remedies for 08 and 09: MMRM fitted by arm (linear and spline in baseline), AIPW with a bootstrap SE
 R/11_mnar_sensitivity.R           MNAR dropout: MMRM and MI under MAR, delta-adjusted MI (pattern mixture), copy-reference MI, tipping points
+R/12_robust_se_mmrm_by_arm.R      honest SEs for 10's MMRM fitted by arm: cluster-robust (CR2) and bootstrap
 docs/                             figures shown in WALKTHROUGH.md (from the 2023 files)
 data/                             the CSVs made by 01 (not in the repository; see data/README.md)
 data_example/                     the synthetic data made by 00_make_example_data.R (made on first use)
-output/                           tables and figures made by 02-11
+output/                           tables and figures made by 02-12
 ```
 
 ---
