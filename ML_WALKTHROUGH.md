@@ -489,7 +489,7 @@ base learners, a stack of them, a grid of predicted-against-observed plots with
 each learner's stacking weight in its title, and a variable importance plot for
 the best model. Zeleke et al. (2023) did the same for length of stay with eight
 regressors and six classifiers, adding ROC and calibration curves. This
-chapter does it for four MEPS problems, in R and Python.
+chapter does it for five MEPS problems on three data sets, in R and Python.
 
 **The problems.**
 
@@ -527,8 +527,9 @@ admission. Stays are now counted by the year they began.
 (Bellamy et al. 2019): ten or more office, outpatient and ER visits, inpatient
 nights and home health visits in the year, with race and ethnicity
 (non-Hispanic White vs everyone else) as the "protected attribute". The
-predictors are the same year's characteristics, as in that example. 28% of adults
-were high users (weighted): 35% of non-Hispanic White adults and 18% of others.
+predictors are the same year's characteristics, as in that example. 28% of
+adults were high users (weighted): 35% of non-Hispanic White adults and 18% of
+others.
 
 **The learners.** Ten, plus their stack, the same in both languages except for
 the libraries:
@@ -570,25 +571,44 @@ out-of-fold scores.
 - `fig13_S*_roc.png` (logistic, the stack and the best learner highlighted) and
   `fig13_S*_calibration.png` (observed share against mean prediction, by
   decile) for the yes/no outcomes.
-- `fig13_S4_fairness.png`, and `docs/ml/fig13_summary.png`: each learner's
-  gain over OLS or logistic regression in all five problems, both languages.
+- `fig13_S4_fairness.png`: the group fairness metrics for S4 (below).
+- `docs/ml/fig13_summary.png` (from `ml_13c_summary.py`): each learner's gain
+  over OLS or logistic regression in all five problems, both languages.
 
 ![Gains over the plain regression](docs/ml/fig13_summary.png)
 
-**What we found** (Python; R's numbers are in the summary figure and agree to
-two decimal places almost everywhere):
+**What we found.** The two languages agree to two decimal places in most
+cells; the exceptions are the learners with the most randomness or the most
+different implementations (the single tree, the forest, the neural network).
+The numbers in the text are Python's.
 
-@@TABLE@@
+Test-data R² or AUC, survey-weighted, R / Python (the stacking weights are in
+the plots' panel titles and `output/ml/ch13/summary_table.md`):
+
+| Learner | S1 log spending (R²) | S2 top 10% (AUC) | S3 log nights (R²) | S3b week or more (AUC) | S4 high use (AUC) |
+|---|---|---|---|---|---|
+| OLS / logistic | 0.487 / 0.487 | 0.815 / 0.815 | 0.190 / 0.190 | 0.756 / 0.756 | 0.796 / 0.796 |
+| Lasso | 0.489 / 0.489 | 0.815 / 0.814 | 0.188 / 0.187 | 0.765 / 0.766 | 0.797 / 0.797 |
+| Ridge | 0.488 / 0.488 | 0.814 / 0.815 | 0.173 / 0.173 | 0.753 / 0.753 | 0.797 / 0.797 |
+| Elastic net | 0.489 / 0.489 | 0.814 / 0.814 | 0.187 / 0.188 | 0.760 / 0.764 | 0.797 / 0.797 |
+| KNN | 0.420 / 0.420 | 0.794 / 0.794 | 0.126 / 0.126 | 0.733 / 0.733 | 0.779 / 0.779 |
+| Tree (CART) | 0.475 / 0.471 | 0.789 / 0.789 | 0.153 / 0.153 | 0.722 / 0.679 | 0.751 / 0.733 |
+| Random forest | 0.495 / 0.495 | 0.828 / 0.819 | 0.186 / 0.189 | 0.753 / 0.763 | 0.790 / 0.791 |
+| XGBoost | 0.487 / 0.489 | 0.810 / 0.812 | 0.198 / 0.200 | 0.762 / 0.765 | 0.805 / 0.805 |
+| SVM | 0.463 / 0.463 | 0.780 / 0.781 | 0.168 / 0.168 | 0.687 / 0.687 | 0.780 / 0.780 |
+| Neural net | 0.481 / 0.462 | 0.813 / 0.803 | 0.176 / 0.186 | 0.758 / 0.752 | 0.798 / 0.795 |
+| Stack | 0.495 / 0.496 | 0.819 / 0.819 | 0.204 / 0.209 | 0.771 / 0.773 | 0.804 / 0.805 |
 
 1. **Nothing beat the plain regression by much.** The largest gains over OLS or
    logistic regression were the stack's: +0.017 in AUC for a week-long stay
    (95% interval 0.001 to 0.033) and +0.019 in R² for nights per stay (−0.006
    to 0.044). XGBoost beat logistic regression for high use by 0.009 (0.003 to
-   0.015), an interval that excludes zero only because 4,414 test people make
-   it narrow. Otherwise gradient boosting and the random forest tied the
-   regression, and KNN, the single tree and the SVM were worse. This is the usual finding for tabular data of this size
-   (Zeleke et al. found the same for length of stay: ridge and XGBoost tied,
-   and logistic regression was 0.002 behind gradient boosting in AUC).
+   0.015): real, with 4,414 test people, but small. Otherwise gradient
+   boosting and the random forest tied the regression, and KNN, the single
+   tree and the SVM were worse. This is the usual finding for tabular data of
+   this size (Zeleke et al. found the same for length of stay: ridge and
+   XGBoost tied, and logistic regression was 0.002 behind gradient boosting in
+   AUC).
 2. **The in-sample grids show who overfits.** The random forest's training R²
    for nights per stay was 0.59 against 0.19 in the test data; the SVM's
    training AUC for a long stay 0.98 against 0.69. OLS's in-sample and
@@ -607,14 +627,17 @@ two decimal places almost everywhere):
    the self-administered questionnaire were more often in long stays, so the
    missingness itself carries information (one reason chapter 1 keeps the
    `_miss` columns).
-5. **Two learners needed care.** scikit-learn's neural network classifier with
+5. **Three learners needed care.** scikit-learn's neural network classifier with
    early stopping stopped on validation *accuracy*, which, with 19% long stays,
    halted near "predict nobody" (test AUC 0.63, training 0.58); without early
    stopping, and with weight decay doing the regularizing, it reached 0.75. R's
    `nnet` with one random start and light decay overfit nights per stay badly
    (R² −0.08); averaging three starts and a wider decay grid brought it to
-   0.18, as chapter 6 found. A ten-learner table is only as fair as the tuning
-   of its worst-tuned learner.
+   0.18, as chapter 6 found. And R's single classification tree (`rpart`'s
+   "class" method) never split for long stays at depth 3 (AUC 0.50); grown as
+   a regression tree on the 0/1 outcome, which is what scikit-learn's Gini
+   criterion amounts to, it reached 0.72. A ten-learner table is only as fair
+   as the tuning of its worst-tuned learner.
 
 **Fairness (S4).** At a threshold that flags the same share as are high users,
 logistic regression flagged 40% of non-Hispanic White adults in the test data
@@ -640,8 +663,10 @@ group and outcome are independent in the training data; it brought disparate
 impact to 0.77–0.86 and closed the true-positive gap, for 0.02 in AUC and much
 worse calibration: the reweighed logistic model's average prediction for
 others was 64% above their observed rate. (Even the plain models over-predict
-for others by 18%, because they were fitted without the survey weights and
-judged with them.) Which of these is fair depends on what the flag is for. If
+for others by 18%, probably because they were fitted without the survey
+weights and judged with them.) Social characteristics carry much of the
+prediction: for XGBoost, education ranked first and race and ethnicity fourth
+in importance, ahead of self-rated health. Which of these is fair depends on what the flag is for. If
 high use stands in for need, the flag should follow need, and use is a biased
 measure of need when some groups face more barriers to care; Obermeyer et al.
 (2019) found exactly this in a commercial algorithm that used spending as the

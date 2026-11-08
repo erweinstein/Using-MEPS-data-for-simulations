@@ -136,7 +136,7 @@ Chapter 13 compares ten learners and their stack on four problems; its extract a
 
 ```bash
 python ml/python/ml_13a_stays_extract.py "C:/Users/YOU/folder/MEPS raw"   # or Rscript ml/R/ml_13a_stays_extract.R ...
-python ml/python/ml_13_model_comparison.py          # S1-S4 (~45 min); or Rscript ml/R/ml_13_model_comparison.R
+python ml/python/ml_13_model_comparison.py          # S1-S4 (~35 min); or Rscript ml/R/ml_13_model_comparison.R (~2 hours)
 python ml/python/ml_13c_summary.py                  # one figure and table across scenarios and languages
 ```
 

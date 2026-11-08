@@ -94,9 +94,11 @@ lib_for <- function(kind) {
                  function(Z) FNN::knn.reg(Xs, sc(Z), y, k = par$k)$pred }),
     `Tree (CART)` = list(grid = do.call(c, lapply(c(3, 5, 8), function(d) lapply(c(20, 60), function(l) list(depth = d, leaf = l)))),
                          fit = function(X, y, par) {
-                           m <- rpart::rpart(y ~ ., data.frame(y = y, X, check.names = FALSE), method = if (clf) "class" else "anova",
+                           # "anova" on a 0/1 outcome (squared error = Gini) for both kinds: with rpart's "class" method a
+                           # shallow tree for a 10-20% outcome never split here (its complexity check counts misclassifications)
+                           m <- rpart::rpart(y ~ ., data.frame(y = y, X, check.names = FALSE), method = "anova",
                                              control = rpart::rpart.control(maxdepth = par$depth, minbucket = par$leaf, cp = 0, xval = 0))
-                           function(Z) { p <- predict(m, data.frame(Z, check.names = FALSE)); if (clf) p[, "1"] else p } }),
+                           function(Z) predict(m, data.frame(Z, check.names = FALSE)) }),
     `Random forest` = list(grid = do.call(c, lapply(c(0.2, 0.4), function(f) lapply(c(5, 20), function(l) list(frac = f, leaf = l)))),
                            fit = function(X, y, par) {
                              m <- ranger::ranger(x = X, y = if (clf) factor(y) else y, num.trees = 400, probability = clf,
@@ -285,7 +287,8 @@ run <- function(sid) {
 }
 
 args <- commandArgs(trailingOnly = TRUE); todo <- if (length(args)) args else names(SCEN)
-res <- do.call(rbind, lapply(todo, run))
-f <- file.path(out, "all_metrics_R.csv")
-if (file.exists(f)) { old <- read.csv(f); res <- rbind(old[!old$scenario %in% todo, names(res)], res) }
-write.csv(res, f, row.names = FALSE)
+invisible(lapply(todo, run))
+# one file across scenarios, rebuilt from the per-scenario files (R2 and AUC columns side by side)
+fs <- list.files(out, "^S[0-9b]+_metrics_R\\.csv$", full.names = TRUE)
+res <- dplyr::bind_rows(lapply(fs, read.csv))
+write.csv(res, file.path(out, "all_metrics_R.csv"), row.names = FALSE)
