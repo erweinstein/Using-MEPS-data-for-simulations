@@ -9,3 +9,5 @@ output/*
 *.dta
 *.zip
 data_example/*
+__pycache__/
+*.pyc

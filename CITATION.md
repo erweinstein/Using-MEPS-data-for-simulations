@@ -21,16 +21,16 @@ HC-248D.)
 
 ## This folder
 
-> Weinstein, Eliot R. (2026). *Using MEPS data for simulations: real health
-> care outcomes as simulation populations* (R code and walkthrough).
+> Weinstein, Eliot R. (2026). *Using MEPS data for simulations and machine
+> learning* (R and Python code and walkthroughs).
 > https://erweinstein.com
 
 ```bibtex
 @misc{Weinstein2026MEPSsim,
   author = {Weinstein, Eliot R.},
-  title  = {Using {MEPS} Data for Simulations: Real Health Care Outcomes as Simulation Populations},
+  title  = {Using {MEPS} Data for Simulations and Machine Learning},
   year   = {2026},
-  note   = {R code and walkthrough},
+  note   = {R and Python code and walkthroughs},
   url    = {https://erweinstein.com}
 }
 ```

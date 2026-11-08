@@ -1,6 +1,6 @@
-# Using MEPS data for simulations
+# Using MEPS data for simulations and machine learning
 
-### A how-to guide, with R code, for using public health care survey data as the population in a simulation study
+### How-to guides, with R and Python code, for using public health care survey data as a simulation population and for machine learning research
 
 **By**  
 Eliot R. Weinstein  
@@ -41,7 +41,21 @@ how to analyse trials with a baseline and one or several follow-ups when
 effects vary and data are missing (change scores, ANCOVA, constrained
 longitudinal models, mixed models, GEE, and doubly robust estimators).
 
-**Start with [`WALKTHROUGH.md`](WALKTHROUGH.md).**
+The second half of the guide (**machine learning**) uses the same survey to
+fit, compare and explain the most common kinds of machine learning models,
+chapter by chapter following *An Introduction to Statistical Learning* (R and
+Python editions), *The Elements of Statistical Learning* and Molnar's
+*Interpretable Machine Learning*, in **both R and Python** on exactly the same
+rows, folds and test set. The task is prospective: predict 2023 spending, top
+spenders, emergency room visits, hospital stays and office visits for 6,353
+adults from their 2022 characteristics. Beyond the textbooks it covers
+stacking and the Super Learner, conformal prediction intervals, subgroup
+checks, recent tabular models (TabPFN, RealMLP, TabM, CatBoost), and a last
+chapter that returns to trial design: adjusting a trial's analysis for a
+machine-learning prognostic score, checked by plasmode simulation.
+
+**Start with [`WALKTHROUGH.md`](WALKTHROUGH.md)** (simulations) **or
+[`ML_WALKTHROUGH.md`](ML_WALKTHROUGH.md)** (machine learning).
 
 ---
 
@@ -92,12 +106,33 @@ source("R/11_mnar_sensitivity.R")              # dropout that depends on the mis
 source("R/12_robust_se_mmrm_by_arm.R")         # sandwich (CR2) and bootstrap SEs for the MMRM fitted by arm (~4-6 hours; resumes if stopped)
 ```
 
+**The machine learning half** needs the real Panel 27 file (`h252.dta`; the
+synthetic data do not cover it). In R, set `meps_dir` in `ml/R/ml_00_extract.R`
+and run the chapters in order:
+
+```r
+source("ml/R/ml_00_extract.R")       # data/meps_ml.csv: 6,353 adults, 2022 predictors, 2023 outcomes
+source("ml/R/ml_01_classical.R")     # ... through ml/R/ml_12_prognostic_adjustment.R
+```
+
+In Python (3.10 or later), from the repository's top folder:
+
+```bash
+python ml/python/ml_00_extract.py    # the same data/meps_ml.csv
+python ml/python/ml_01_classical.py  # ... through ml_12; ml_11 and ml_11b are Python only
+python ml/python/ml_99_results_table.py   # one table of both languages' results
+```
+
 Results go to `output/` (CSV tables and PNG figures). Times are from a modest
 two-core machine; the slow ones can be shortened by lowering `REPS` at the top.
 
 **Dependencies.** R (4.1 or later, for the `|>` pipe), with `haven`, `dplyr`,
 `ggplot2`, `survey`, `sandwich`, `nlme`, `geepack`, `clubSandwich` and `MASS` (each script installs what
-it needs if it is missing).
+it needs if it is missing). The machine learning chapters also use `glmnet`,
+`mgcv`, `FNN`, `rpart`, `ranger`, `xgboost`, `e1071`, `nnet`, `cluster`,
+`SuperLearner`, `glm2` and `patchwork` in R, and `pandas`,
+`statsmodels`, `scikit-learn`, `pygam`, `xgboost`, `lightgbm`, `torch`, `shap`,
+`tabpfn`, `pytabkit` and `catboost` in Python.
 
 ---
 
@@ -105,7 +140,8 @@ it needs if it is missing).
 
 ```
 README.md                         this file
-WALKTHROUGH.md                    the guide: the MEPS site, each step and why, adapting it, examples, cautions
+WALKTHROUGH.md                    the simulation guide: the MEPS site, each step and why, adapting it, examples, cautions
+ML_WALKTHROUGH.md                 the machine learning guide: the prediction problem, each chapter, results, recent methods
 CITATION.md                       how to cite MEPS and this folder
 LICENSE                           MIT (code and text; no MEPS data are included)
 meps_for_simulation.Rproj         RStudio project
@@ -123,10 +159,28 @@ R/09_several_follow_ups.R         baseline + three follow-ups (four-year panels)
 R/10_remedies.R                   remedies for 08 and 09: MMRM fitted by arm (linear and spline in baseline), AIPW with a bootstrap SE
 R/11_mnar_sensitivity.R           MNAR dropout: MMRM and MI under MAR, delta-adjusted MI (pattern mixture), copy-reference MI, tipping points
 R/12_robust_se_mmrm_by_arm.R      honest SEs for 10's MMRM fitted by arm: cluster-robust (CR2) and bootstrap
+R/13_review_workbook.R            a readable Excel workbook of the extracts, for showing someone (not for posting)
+ml/R/, ml/python/                 the machine learning chapters, one script per chapter in each language:
+  ml_00_extract                   h252.dta -> data/meps_ml.csv, with the shared train/test split and folds
+  ml_common                       shared data loading, design matrix, survey-weighted metrics, results log
+  ml_01_classical                 baselines, linear/logistic/count GLMs, log OLS with smearing, two-part model
+  ml_02_regularization            ridge, lasso, elastic net
+  ml_03_nonlinear                 GAMs with splines, k-nearest neighbours
+  ml_04_trees_ensembles           trees, random forests, boosting (squared error, Tweedie, logistic, Poisson)
+  ml_05_svm                       linear and radial SVMs, support vector regression
+  ml_06_neural_nets               one hidden layer; in Python also a deeper PyTorch network
+  ml_07_unsupervised              PCA, k-means and hierarchical clustering, principal components regression
+  ml_08_stacking                  stacking and the Super Learner; household bootstrap of test metrics
+  ml_09_interpretation            permutation importance, PDP/ICE, ALE, SHAP
+  ml_10_uncertainty_subgroups     split conformal, CQR, Mondrian CQR; subgroup AUC and calibration
+  ml_11_tabpfn, ml_11b_...        (Python) TabPFN v2, RealMLP, TabM, CatBoost
+  ml_12_prognostic_adjustment     a trial adjusted for an ML prognostic score (PROCOVA), by plasmode simulation
+  ml_99_results_table             (Python) both languages' test results in one table
 docs/                             figures shown in WALKTHROUGH.md (from the 2023 files)
+docs/MEPS_and_institutions.md     what MEPS can and cannot say about hospitals, health systems, plans, ACOs and facilities
 data/                             the CSVs made by 01 (not in the repository; see data/README.md)
 data_example/                     the synthetic data made by 00_make_example_data.R (made on first use)
-output/                           tables and figures made by 02-12
+output/                           tables and figures made by 02-12 and the ml chapters (not in the repository)
 ```
 
 ---
