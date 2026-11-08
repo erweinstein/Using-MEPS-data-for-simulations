@@ -18,9 +18,10 @@ three textbooks:
 
 It adds what those books do not cover: stacking and the Super Learner, conformal
 prediction intervals, subgroup checks, methods from the last four years for
-tabular data (TabPFN, RealMLP, TabM), and a last chapter that comes back to
+tabular data (TabPFN, RealMLP, TabM), a chapter that comes back to
 simulation and trial design (adjusting a trial's analysis for a machine-learning
-prognostic score). Every chapter has an R script and a Python script that use
+prognostic score), and a last one that lines up ten learners and their stack on
+four problems, including length of hospital stay and a fairness check. Every chapter has an R script and a Python script that use
 exactly the same rows, folds and test set, so the numbers can be compared.
 
 As in the first half, the numbers below are what we got with the 2023 release
@@ -145,20 +146,26 @@ python ml/python/ml_00_extract.py   # makes the same data/meps_ml.csv
 python ml/python/ml_01_classical.py
 ```
 
+Chapter 13 has its own extract (`ml_13a_stays_extract`), which needs the
+2021–2023 stay, condition-link, condition and full-year files listed in its
+header.
+
 `ml_common.R` and `ml_common.py` hold the shared pieces: reading the data, the
 predictor list, the design matrix, the survey-weighted metrics, and a function
 that appends each model's test results to `output/ml/results_R.csv` or
 `output/ml/results_python.csv` (rerunning a chapter replaces its own rows).
 
 **Packages.** R: glmnet, mgcv, FNN, rpart, ranger, xgboost, e1071, nnet,
-cluster, SuperLearner, glm2, ggplot2, patchwork. Python: numpy, pandas,
+cluster, SuperLearner, glm2, quadprog, ggplot2, patchwork. Python: numpy, pandas,
 statsmodels, scikit-learn, pygam, xgboost, lightgbm, torch, shap, tabpfn,
 pytabkit and catboost. Most chapters run in a minute or two on a laptop. The
 slow ones are the support vector machines (chapter 5), the neural networks'
 tuning (chapter 6, 20–40 minutes), the Super Learner (chapter 8, about 15
 minutes), and TabPFN on a CPU (chapter 11; about an hour for four outcomes on two
 cores; much faster on a GPU). RealMLP, TabM and CatBoost (chapter 11b) take about
-ten minutes.
+ten minutes. Chapter 13 takes about 35 minutes in Python and two hours in R for
+all five problems (most of it the random forests, SVMs and neural networks, and
+the permutation importance of the stack).
 
 ## 3. How the models are judged
 
@@ -472,6 +479,190 @@ by 0.5. 5,000 trials with the effect and 5,000 without:
 3. Type I error stayed near 5% (0.053–0.056; the simulation's standard error is
    0.003), as theory says it should with any fixed score.
 
+### 4.13 Ten learners side by side (`ml_13_model_comparison`, data from `ml_13a_stays_extract`)
+
+The earlier chapters take one family of models at a time. Applied papers more
+often line up many learners on one problem and show, for each, its predictions
+in the training data and in held-out data, then explain the winner. Stata's
+`pystacked` (Ahrens, Hansen and Schaffer 2023) made that layout easy: a set of
+base learners, a stack of them, a grid of predicted-against-observed plots with
+each learner's stacking weight in its title, and a variable importance plot for
+the best model. Zeleke et al. (2023) did the same for length of stay with eight
+regressors and six classifiers, adding ROC and calibration curves. This
+chapter does it for four MEPS problems, in R and Python.
+
+**The problems.**
+
+| | Outcome | Data | Training / test | Metric |
+|---|---|---|---|---|
+| S1 | log(1 + 2023 spending) | Panel 27 adults (chapter 1's data) | 4,474 / 1,879 | R² |
+| S2 | top 10% of 2023 spenders | the same | 4,474 / 1,879 | AUC |
+| S3 | nights per hospital stay (log) | stays of adults admitted 2021–2023 | 3,984 / 1,590 stays | R² |
+| S3b | a stay of a week or more | the same | 3,984 / 1,590 | AUC |
+| S4 | "high use" of care in 2023 | 2023 full-year file, adults | 10,354 / 4,414 | AUC |
+
+**S3, the length-of-stay data** (`ml_13a`). MEPS's hospital stay files have
+the nights in hospital, whether the stay began in the ER, the reason (an
+operation, other treatment, tests only, giving birth, a pregnancy
+complication), and whether there was an operation, but no diagnosis-related
+group. The diagnoses come the long way round: the condition-event link file
+ties each stay to the conditions the household reported for it, and the
+conditions file gives each condition's CCSR categories, whose first three
+letters are a body system (circulatory, respiratory, infections, and so on),
+the survey's stand-in for a Major Diagnostic Category. The person's
+characteristics come from that year's full-year file. Left out on purpose:
+payments (known only after discharge, and they rise with the nights), discharge
+medicines, and the person's other use in the year (it includes this stay).
+Three years are pooled to get 5,574 stays; the median is 3 nights, and 19%
+last a week or more.
+
+One trap: **a year's stay file holds the stays that ended that year**. The 11
+stays in the 2023 file that began in 2022 averaged 26 nights, against 5 for the
+rest, because a stay begun in December only reaches the next year's file if it
+is long. A first version used "began the year before" as a predictor, and it
+came fifth in importance: length-biased sampling, not something known at
+admission. Stays are now counted by the year they began.
+
+**S4, high use** (`ml_13a`) follows IBM's AI Fairness 360 MEPS example
+(Bellamy et al. 2019): ten or more office, outpatient and ER visits, inpatient
+nights and home health visits in the year, with race and ethnicity
+(non-Hispanic White vs everyone else) as the "protected attribute". The
+predictors are the same year's characteristics, as in that example. 28% of adults
+were high users (weighted): 35% of non-Hispanic White adults and 18% of others.
+
+**The learners.** Ten, plus their stack, the same in both languages except for
+the libraries:
+
+| Learner | Tuned on the household folds | R | Python |
+|---|---|---|---|
+| OLS / logistic regression | — | `lm`, `glm` | scikit-learn |
+| Lasso, ridge, elastic net | penalty (and mixing for the elastic net) | `glmnet` | scikit-learn |
+| k nearest neighbours | k | `FNN` | scikit-learn |
+| A single tree (CART) | depth, leaf size | `rpart` | scikit-learn |
+| Random forest | share of variables per split, node size | `ranger` | scikit-learn |
+| Gradient boosting | rounds, depth | `xgboost` | `xgboost` |
+| Support vector machine (RBF kernel) | cost | `e1071` | scikit-learn |
+| Neural network | weight decay (and size in R) | `nnet`, one layer, three starts averaged | two layers (32, 16) |
+| Stack | non-negative weights summing to one | `quadprog` | `scipy` |
+
+The stack is `pystacked`'s default ("nnls1"): non-negative least squares on
+the out-of-fold predictions, with the weights summing to one. For the yes/no
+outcomes, the SVM's scores become probabilities by Platt scaling of its
+out-of-fold scores.
+
+**The plots** (in `output/ml/ch13/`, and those that do not show individuals in
+`docs/ml/`):
+
+- `fig13_S*_in_sample.png` and `fig13_S*_out_of_sample.png`: the capstone-style
+  3 × 4 grids. For the continuous outcomes, predicted against observed with
+  the line of equality, one panel per learner, the stacking weight in the title
+  (training data, then test data). For the yes/no outcomes, ROC curves in the
+  same layout. The scatter grids show individual people, so they stay in
+  `output/`.
+- `fig13_S*_metrics.png`: each learner's R² or AUC in the training data, by
+  cross-validation, and in the test data with a household-bootstrap interval.
+  The gap between the open circle (training) and the filled one (test) is the
+  overfitting the in-sample grid shows by eye.
+- `fig13_S*_vip.png`: permutation importance for the best model on the test
+  data (and for the best single learner, when the best model is the stack),
+  survey-weighted, with a categorical variable's dummies shuffled together, as
+  a share of the total ("proportion importance").
+- `fig13_S*_roc.png` (logistic, the stack and the best learner highlighted) and
+  `fig13_S*_calibration.png` (observed share against mean prediction, by
+  decile) for the yes/no outcomes.
+- `fig13_S4_fairness.png`, and `docs/ml/fig13_summary.png`: each learner's
+  gain over OLS or logistic regression in all five problems, both languages.
+
+![Gains over the plain regression](docs/ml/fig13_summary.png)
+
+**What we found** (Python; R's numbers are in the summary figure and agree to
+two decimal places almost everywhere):
+
+@@TABLE@@
+
+1. **Nothing beat the plain regression by much.** The largest gains over OLS or
+   logistic regression were the stack's: +0.017 in AUC for a week-long stay
+   (95% interval 0.001 to 0.033) and +0.019 in R² for nights per stay (−0.006
+   to 0.044). XGBoost beat logistic regression for high use by 0.009 (0.003 to
+   0.015), an interval that excludes zero only because 4,414 test people make
+   it narrow. Otherwise gradient boosting and the random forest tied the
+   regression, and KNN, the single tree and the SVM were worse. This is the usual finding for tabular data of this size
+   (Zeleke et al. found the same for length of stay: ridge and XGBoost tied,
+   and logistic regression was 0.002 behind gradient boosting in AUC).
+2. **The in-sample grids show who overfits.** The random forest's training R²
+   for nights per stay was 0.59 against 0.19 in the test data; the SVM's
+   training AUC for a long stay 0.98 against 0.69. OLS's in-sample and
+   out-of-sample panels look alike. A model whose in-sample panel hugs the line
+   is not a good model; it is one that has memorized.
+3. **The stack spread its weight.** For log spending, XGBoost (0.40), the
+   random forest (0.21) and ridge (0.15); for nights per stay, XGBoost (0.46),
+   the SVM (0.25), a single tree and the forest (0.13 each). Learners that make
+   different mistakes get weight even when they are worse alone (the SVM and the
+   tree for nights per stay).
+4. **What predicts length of stay.** The reason for the stay came first
+   (treatment stays averaged 6.2 nights, operations 4.4, births 2.7), then
+   admission through the ER, an operation, and an infection among the linked
+   conditions (7.8 nights against 4.6). For a week or more, the missing-value
+   flag for the mental component score came third: people who did not fill in
+   the self-administered questionnaire were more often in long stays, so the
+   missingness itself carries information (one reason chapter 1 keeps the
+   `_miss` columns).
+5. **Two learners needed care.** scikit-learn's neural network classifier with
+   early stopping stopped on validation *accuracy*, which, with 19% long stays,
+   halted near "predict nobody" (test AUC 0.63, training 0.58); without early
+   stopping, and with weight decay doing the regularizing, it reached 0.75. R's
+   `nnet` with one random start and light decay overfit nights per stay badly
+   (R² −0.08); averaging three starts and a wider decay grid brought it to
+   0.18, as chapter 6 found. A ten-learner table is only as fair as the tuning
+   of its worst-tuned learner.
+
+**Fairness (S4).** At a threshold that flags the same share as are high users,
+logistic regression flagged 40% of non-Hispanic White adults in the test data
+and 14% of everyone else: a disparate impact (the ratio of the two) of 0.35,
+where the "four-fifths rule" of US employment guidelines treats anything below
+0.8 as a warning sign. Most of that is the base rates, 34% and 17% in the test
+data, so even a perfect classifier would score 0.50. But among people who were
+high users, others were also less often flagged (true-positive rates 0.44 and
+0.66). The two usual remedies, on logistic regression and XGBoost alike:
+
+| | AUC | Disparate impact | Equal opportunity difference | Mean prediction / observed, others |
+|---|---|---|---|---|
+| Logistic | 0.796 | 0.35 | −0.23 | 1.18 |
+| Logistic, without race and ethnicity | 0.789 | 0.53 | −0.11 | 1.39 |
+| Logistic + reweighing | 0.773 | 0.86 | +0.06 | 1.64 |
+| XGBoost | 0.805 | 0.41 | −0.22 | 1.19 |
+| XGBoost + reweighing | 0.788 | 0.77 | +0.03 | 1.57 |
+
+Dropping race and ethnicity ("fairness through unawareness") closed about half
+the gaps, since the other predictors carry much of the same information.
+Reweighing (Kamiran and Calders 2012) weights each group-by-outcome cell so that
+group and outcome are independent in the training data; it brought disparate
+impact to 0.77–0.86 and closed the true-positive gap, for 0.02 in AUC and much
+worse calibration: the reweighed logistic model's average prediction for
+others was 64% above their observed rate. (Even the plain models over-predict
+for others by 18%, because they were fitted without the survey weights and
+judged with them.) Which of these is fair depends on what the flag is for. If
+high use stands in for need, the flag should follow need, and use is a biased
+measure of need when some groups face more barriers to care; Obermeyer et al.
+(2019) found exactly this in a commercial algorithm that used spending as the
+stand-in. No metric here settles that: it is a question about the outcome, not
+the model.
+
+**Stata.** `ml/stata/ml_13_pystacked.do` runs S3 and S3b with `pystacked`
+itself, for readers who work in Stata. It was written from the command's help
+file and not run here; the R and Python scripts are the tested versions.
+
+**What other work on MEPS has done.** Most published machine learning on MEPS
+predicts spending: a random forest on 2013 spending of adults 45 and older
+(Zayas et al. 2016; R² 0.46, from the same year's use), ridge, a neural network
+and gradient boosting on IBM's AIX360 copy of MEPS with SHAP, LIME, partial
+dependence and ALE explanations (Bankiewicz, Białek and Pałdyna 2020; test R²
+0.30–0.37 for log spending), and a two-stage Super Learner for spending's zeros
+and tail on 2016–2017 (Wu et al. 2022). AI Fairness 360's tutorial is the
+standard MEPS example for group fairness metrics and reweighing. None of them
+uses the stay files; the length-of-stay scenario here is, as far as we found,
+new for MEPS.
+
 ## 5. All results in one table
 
 The test-set metric for each model and outcome: R² for log spending, spending
@@ -630,6 +821,12 @@ Mondrian conformal (chapter 10), TreeSHAP and ALE (chapter 9), and PROCOVA
   group, and not for groups defined by the outcome.
 - **Check subgroups.** Overall AUC and calibration can hide groups for whom the
   model is miscalibrated.
+- **Know how the file was built.** A year's stay file holds the stays that
+  ended that year; a predictor that knows this ("began last year") is length
+  bias, not information (chapter 13).
+- **A comparison is only as fair as its worst-tuned learner.** One default
+  setting (early stopping on accuracy) made a neural network look useless for a
+  rare outcome (chapter 13).
 - **Not causal.** None of these models says what would happen if someone's
   insurance or health changed.
 - **The data use agreement.** MEPS public use files may be used for research
@@ -639,8 +836,18 @@ Mondrian conformal (chapter 10), TreeSHAP and ALE (chapter 9), and PROCOVA
 
 ## 8. References
 
+- Ahrens, A., C. B. Hansen and M. E. Schaffer (2023). pystacked: stacking
+  generalization and machine learning in Stata. *The Stata Journal* 23(4),
+  909–931.
 - Angelopoulos, A. N. and S. Bates (2023). Conformal prediction: a gentle
   introduction. *Foundations and Trends in Machine Learning* 16(4), 494–591.
+- Bankiewicz, D., J. Białek and A. Pałdyna (2020). Story MEPS: healthcare
+  expenditures of individuals. Chapter 7 of *XAI Stories: Case Studies for
+  eXplainable Artificial Intelligence* (online book for a University of Warsaw
+  and Warsaw University of Technology course; pbiecek.github.io/xai_stories).
+- Bellamy, R. K. E., et al. (2019). AI Fairness 360: an extensible toolkit
+  for detecting and mitigating algorithmic bias. *IBM Journal of Research and
+  Development* 63(4/5), 4:1–4:15.
 - Breiman, L. (1996). Stacked regressions. *Machine Learning* 24, 49–64.
 - Deb, P. and E. C. Norton (2018). Modeling health care expenditures and use.
   *Annual Review of Public Health* 39, 489–505.
@@ -678,6 +885,9 @@ Mondrian conformal (chapter 10), TreeSHAP and ALE (chapter 9), and PROCOVA
 - Josse, J., J. M. Chen, N. Prost, G. Varoquaux and E. Scornet (2024). On the
   consistency of supervised learning with missing values. *Statistical Papers*
   65, 5447–5479.
+- Kamiran, F. and T. Calders (2012). Data preprocessing techniques for
+  classification without discrimination. *Knowledge and Information Systems*
+  33, 1–33.
 - Lei, J., M. G'Sell, A. Rinaldo, R. J. Tibshirani and L. Wasserman (2018).
   Distribution-free predictive inference for regression. *Journal of the
   American Statistical Association* 113, 1094–1111.
@@ -710,6 +920,17 @@ Mondrian conformal (chapter 10), TreeSHAP and ALE (chapter 9), and PROCOVA
 - Vovk, V., A. Gammerman and G. Shafer (2005). *Algorithmic Learning in a Random
   World*. Springer.
 - Wolpert, D. H. (1992). Stacked generalization. *Neural Networks* 5, 241–259.
+- Wu, Z., S. A. Berkowitz, P. J. Heagerty and D. Benkeser (2022). A two-stage
+  super learner for healthcare expenditures. *Health Services and Outcomes
+  Research Methodology* 22(4), 435–453.
 - Yang, Y., W. Qian and H. Zou (2018). Insurance premium prediction via gradient
   tree-boosted Tweedie compound Poisson models. *Journal of Business & Economic
   Statistics* 36, 456–470.
+- Zayas, C. E., Z. He, J. Yuan, M. Maldonado-Molina, W. Hogan, F. Modave, Y. Guo
+  and J. Bian (2016). Examining healthcare utilization patterns of elderly
+  middle-aged adults in the United States. *Proceedings of the International
+  Florida AI Research Society Conference* 2016, 361–366.
+- Zeleke, A. J., P. Palumbo, P. Tubertini, R. Miglio and L. Chiari (2023).
+  Machine learning-based prediction of hospital prolonged length of stay
+  admission at emergency department: a Gradient Boosting algorithm analysis.
+  *Frontiers in Artificial Intelligence* 6, 1179226.

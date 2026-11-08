@@ -131,6 +131,15 @@ python ml/python/ml_01_classical.py  # ... through ml_12; ml_11 and ml_11b are P
 python ml/python/ml_99_results_table.py   # one table of both languages' results
 ```
 
+Chapter 13 compares ten learners and their stack on four problems; its extract also needs the
+2021-2023 stay, condition-link, condition and full-year files (listed in the script's header):
+
+```bash
+python ml/python/ml_13a_stays_extract.py "C:/Users/YOU/folder/MEPS raw"   # or Rscript ml/R/ml_13a_stays_extract.R ...
+python ml/python/ml_13_model_comparison.py          # S1-S4 (~45 min); or Rscript ml/R/ml_13_model_comparison.R
+python ml/python/ml_13c_summary.py                  # one figure and table across scenarios and languages
+```
+
 Results go to `output/` (CSV tables and PNG figures). Times are from a modest
 two-core machine; the slow ones can be shortened by lowering `REPS` at the top.
 
@@ -189,8 +198,14 @@ ml/R/, ml/python/                 the machine learning chapters, one script per 
   ml_10_uncertainty_subgroups     split conformal, CQR, Mondrian CQR; subgroup AUC and calibration
   ml_11_tabpfn, ml_11b_...        (Python) TabPFN v2, RealMLP, TabM, CatBoost
   ml_12_prognostic_adjustment     a trial adjusted for an ML prognostic score (PROCOVA), by plasmode simulation
+  ml_13a_stays_extract            2021-2023 hospital stays (nights per stay) and 2023 "high use" (AI Fairness 360's definition)
+  ml_13_model_comparison          ten learners + stack on four problems: in-/out-of-sample plots, importance, ROC,
+                                  calibration, fairness by race and ethnicity
+  ml_13c_summary                  (Python) gains over OLS/logistic across scenarios, both languages
+ml/stata/ml_13_pystacked.do       chapter 13's length-of-stay comparison with Stata's pystacked (not run here; untested)
   ml_99_results_table             (Python) both languages' test results in one table
 docs/                             figures shown in WALKTHROUGH.md (from the 2023 files)
+docs/ml/                          chapter 13's summary figures (metrics, importance, ROC, calibration, fairness)
 docs/MEPS_and_institutions.md     what MEPS can and cannot say about hospitals, health systems, plans, ACOs and facilities,
                                   and what the Compendium adds (R/14-R/19)
 docs/NOTES_poster_and_paper.md    notes for the poster and paper (the institutions highlight box)
