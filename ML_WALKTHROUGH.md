@@ -156,7 +156,9 @@ statsmodels, scikit-learn, pygam, xgboost, lightgbm, torch, shap, tabpfn,
 pytabkit and catboost. Most chapters run in a minute or two on a laptop. The
 slow ones are the support vector machines (chapter 5), the neural networks'
 tuning (chapter 6, 20–40 minutes), the Super Learner (chapter 8, about 15
-minutes), and TabPFN on a CPU (chapter 11; much faster on a GPU).
+minutes), and TabPFN on a CPU (chapter 11; about an hour for four outcomes on two
+cores; much faster on a GPU). RealMLP, TabM and CatBoost (chapter 11b) take about
+ten minutes.
 
 ## 3. How the models are judged
 
@@ -300,7 +302,8 @@ the kind ISLP's deep-learning lab builds. Spending is modelled on the log scale
 only.
 
 The one-hidden-layer network matched logistic regression (`high_cost` AUC
-0.812; any ER visit 0.772, the best for that outcome in Python). The deeper
+0.812 in both languages; any ER visit 0.762 in R and 0.772 in Python, the best
+for that outcome in Python). The deeper
 network was worse on every outcome (log spending R² 0.457 vs 0.482). With six
 thousand people and mostly binary predictors, a deep network has little to find
 that a GLM has not, and more ways to overfit. Section 6 covers the newer
@@ -473,9 +476,57 @@ by 0.5. 5,000 trials with the effect and 5,000 without:
 
 The test-set metric for each model and outcome: R² for log spending, spending
 and office visits, AUC for the binary outcomes. Where R and Python differ, both
-are shown (R / Python); a dash means the model was not fitted for that outcome.
+are shown (R / Python); "(R)" or "(Py)" marks a model fitted in only one
+language, and a dash a model not fitted for that outcome.
 
-<!-- RESULTS TABLE -->
+| Chapter | Model | log spending (R²) | spending (R²) | office visits (R²) | top 10% (AUC) | any ER (AUC) | any stay (AUC) |
+|---|---|---|---|---|---|---|---|
+| 01 classical | Mean only | -0.001 | -0.002 | -0.001 | 0.500 | 0.500 | 0.500 |
+| 01 classical | Linear regression | 0.487 | 0.132 | – | – | – | – |
+| 01 classical | Log OLS + smearing | – | -61.075 | – | – | – | – |
+| 01 classical | Two-part (logit x gamma GLM) | – | 0.191 | – | – | – | – |
+| 01 classical | GLM, log link (quasi-Poisson) | – | 0.235 | – | – | – | – |
+| 01 classical | Logistic regression | – | – | – | 0.815 | 0.762 | 0.740 |
+| 01 classical | Poisson GLM | – | – | 0.320 | – | – | – |
+| 01 classical | Negative binomial GLM | – | – | 0.288 | – | – | – |
+| 02 regularization | Ridge | 0.488 | 0.147 | 0.334 / 0.330 | 0.814 / 0.815 | 0.770 / 0.769 | 0.756 / 0.755 |
+| 02 regularization | Elastic net (alpha = 0.5) | 0.489 | 0.140 / 0.114 | 0.334 (R) | 0.814 | 0.769 / 0.768 | 0.753 / 0.749 |
+| 02 regularization | Lasso | 0.489 | 0.140 / 0.139 | 0.330 (R) | 0.815 / 0.814 | 0.768 | 0.751 / 0.749 |
+| 03 nonlinear | GAM (splines) | 0.486 / 0.490 | – | – | 0.822 / 0.816 | 0.762 / 0.764 | 0.737 / 0.751 |
+| 03 nonlinear | GAM, Tweedie (log link) | – | 0.105 (R) | – | – | – | – |
+| 03 nonlinear | GAM, negative binomial | – | – | 0.287 (R) | – | – | – |
+| 03 nonlinear | KNN (k chosen by CV) | 0.422 | 0.127 | 0.167 | 0.777 | 0.699 | 0.737 |
+| 03 nonlinear | GAM, Poisson family (log link) | – | 0.226 (Py) | – | – | – | – |
+| 03 nonlinear | GAM, Poisson | – | – | 0.307 (Py) | – | – | – |
+| 04 trees and ensembles | Tree (pruned by CV) | 0.453 / 0.454 | 0.103 / 0.064 | 0.264 / 0.262 | 0.742 / 0.790 | 0.500 / 0.667 | 0.500 / 0.664 |
+| 04 trees and ensembles | Random forest | 0.494 / 0.497 | 0.162 / 0.232 | 0.228 / 0.327 | 0.823 / 0.825 | 0.758 / 0.755 | 0.751 / 0.753 |
+| 04 trees and ensembles | Boosting (xgboost, squarederror) | 0.490 / 0.488 | 0.148 / 0.096 | – | – | – | – |
+| 04 trees and ensembles | Boosting (xgboost, tweedie) | – | 0.233 / 0.254 | – | – | – | – |
+| 04 trees and ensembles | Boosting (xgboost, logistic) | – | – | – | 0.810 / 0.811 | 0.758 / 0.761 | 0.750 / 0.748 |
+| 04 trees and ensembles | Boosting (xgboost, poisson) | – | – | 0.243 / 0.254 | – | – | – |
+| 04 trees and ensembles | Boosting (LightGBM, regression) | 0.495 (Py) | – | – | – | – | – |
+| 04 trees and ensembles | Boosting (LightGBM, tweedie) | – | 0.250 (Py) | – | – | – | – |
+| 04 trees and ensembles | Boosting (LightGBM, binary) | – | – | – | 0.815 (Py) | 0.759 (Py) | 0.761 (Py) |
+| 04 trees and ensembles | Boosting (LightGBM, poisson) | – | – | 0.318 (Py) | – | – | – |
+| 05 SVM | SVM, linear kernel | – | – | – | 0.790 / 0.780 | 0.537 / 0.571 | – |
+| 05 SVM | SVM, radial kernel | – | – | – | 0.781 / 0.780 | 0.656 | – |
+| 05 SVM | SVR, radial kernel | 0.482 | – | – | – | – | – |
+| 06 neural networks | Neural network (1 hidden layer) | 0.478 / 0.482 | – | – | 0.812 | 0.762 / 0.772 | 0.748 / 0.760 |
+| 06 neural networks | Deep network (PyTorch, 2 hidden layers) | 0.457 (Py) | – | – | 0.805 (Py) | 0.750 (Py) | 0.744 (Py) |
+| 07 unsupervised | Principal components regression (38 PCs) | 0.475 | – | – | – | – | – |
+| 08 stacking | Super Learner | 0.496 / 0.495 | 0.237 / 0.254 | – | 0.815 / 0.817 | – | – |
+| 08 stacking | scikit-learn StackingRegressor (OLS + RF, ridge meta-model) | 0.497 (Py) | – | – | – | – | – |
+| 11 recent tabular models | TabPFN v2 (no tuning) | 0.452 (Py) | – | – | 0.825 (Py) | 0.766 (Py) | 0.762 (Py) |
+| 11 recent tabular models | RealMLP (pytabkit, tuned defaults) | 0.482 (Py) | – | – | 0.816 (Py) | 0.702 (Py) | 0.635 (Py) |
+| 11 recent tabular models | TabM (pytabkit, defaults) | 0.482 (Py) | – | – | 0.823 (Py) | 0.751 (Py) | 0.749 (Py) |
+| 11 recent tabular models | CatBoost (defaults, early stopping) | 0.494 (Py) | – | – | 0.819 (Py) | 0.736 (Py) | 0.755 (Py) |
+
+Where the languages differ most (spending: Tweedie boosting 0.233 / 0.254,
+random forest 0.162 / 0.232), the two runs use different random number streams, and
+the forest libraries read the same size setting differently (ranger's
+`min.node.size` limits which nodes may be split, scikit-learn's
+`min_samples_leaf` the size of the leaves). The boosting difference is well
+within the test set's uncertainty (section 3).
 
 ## 6. Methods from the last four years, and what we left out
 
@@ -495,19 +546,34 @@ ours):
 - **TabPFN v2** (Hollmann et al. 2025; `ml_11_tabpfn.py`): a transformer
   pre-trained on millions of synthetic data sets that predicts new rows from
   the training rows "in context", without fitting parameters to them. The v2
-  weights are under an Apache 2.0 licence with an attribution requirement.
+  weights are under an Apache 2.0 license with an attribution requirement.
   Later versions (2.5, 2.6, 3 and 3.5, released between November 2025 and
   September 2026) handle much larger data, but their weights are for
-  non-commercial use only and need a licence to be accepted at Prior Labs'
+  non-commercial use only and need a license to be accepted at Prior Labs'
   site. On a CPU, TabPFN has to be told to accept more than 1,000 training
-  rows (`ignore_pretraining_limits=True`) and is slow; on a GPU it takes
-  seconds.
+  rows (`ignore_pretraining_limits=True`) and is slow (7 to 21 minutes per
+  outcome here); a GPU is much faster.
 - **RealMLP** (Holzmüller, Grinsztajn and Steinwart 2024) and **TabM**
   (Gorishniy, Kotelnikov and Babenko 2025) from the `pytabkit` package
   (`ml_11b_realmlp_tabm_catboost.py`).
 - **CatBoost** (Prokhorenkova et al. 2018) with early stopping.
 
-<!-- RECENT RESULTS -->
+**What we found.** With no tuning, **TabPFN** tied the best model for being a
+top-10% spender (AUC 0.825, the same as the random forest) and was the best
+for any hospital stay (0.762, against 0.761 for LightGBM), but did worse than
+linear regression on log spending (R² 0.452 against 0.487). **TabM** had the best Brier score and log
+loss of any model for the top 10% (0.068 and 0.244; AUC 0.823), so its
+probabilities were the best calibrated, and was close to the GLMs elsewhere.
+**CatBoost** was close to the best for log spending (R² 0.494). **RealMLP**
+with its defaults was fine for log spending and the top 10% but poor for any
+ER visit and any stay (AUC 0.70 and 0.63); TabArena found RealMLP strong only
+after ensembling many configurations, which a single default run does not do,
+and we did not investigate further.
+
+None of these beat the GLMs, the random forest or the Super Learner by more
+than the test set's noise (a household-bootstrap interval for an AUC here is
+about ±0.04). What they offer is a strong result with no tuning at all, which
+for TabPFN, on data of this size, is the point.
 
 **From R.** TabPFN, RealMLP and TabM are Python packages; R can call them
 through `reticulate`:
