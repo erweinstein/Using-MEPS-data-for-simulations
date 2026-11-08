@@ -69,6 +69,7 @@ meps <- bind_rows(lapply(as.integer(names(fyc_files)), read_fyc)) |>
          stratum = paste(year, VARSTR), psu = paste(year, VARSTR, VARPSU))
 cat("MEPS people with a positive weight, by year:\n"); print(table(meps$year))
 cat("Region missing:", sum(is.na(meps$region)), "\n")
+saveRDS(meps, file.path("data", "meps_fyc_2016_2023.rds"))   # for R/18 (MEPS data: stays in data/, not committed)
 
 # ---- 2. Region x year estimates, with design-based SEs -------------------------------------------------
 # One design per year (each year's strata and PSUs); estimates by region as domains.

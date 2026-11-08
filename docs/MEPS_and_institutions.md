@@ -32,9 +32,9 @@ The code is `R/14` to `R/17`; the MEPS figures for 2023 are reproduced by
 | **Health systems** (e.g., Banner Health, Intermountain Health), **medical centers** | No. No provider or system identifiers. | 639 systems in 2023 (626 in 2016), with counts of hospitals, physicians, nurse practitioners, nursing homes and home health organizations, and insurance products (section 2). | Region and year only. |
 | **Physician practices** | As a setting: office-based visits (HC-248G) against hospital outpatient department visits (HC-248F). In 2023, 13.0% of physician visits were in hospital outpatient departments. | Every group practice billing Medicare, with its physicians (Medicare MD-PPAS counts) and system, if any: 62.1% of these physicians were in system-affiliated practices in 2022, up from 52.2% in 2016. | Region and year (section 3). |
 | **Outpatient sites** (surgery centers, imaging, clinics) | No. | 283,138 sites in 2022 (IQVIA OneKey), 24.6% in systems (25.6% of surgery centers, 38.1% of imaging centers). | Region only (one year). |
-| **Managed care organizations** (HMOs, Medicare Advantage, Medicaid managed care) | Partly: about 30 managed-care variables. In 2023, 42.2% of people with Medicare were in Medicare Advantage, 27.5% of Medicaid enrollees in a Medicaid HMO (household reports, lower than administrative counts: CMS data put MA at just over half of eligible beneficiaries in January 2023). The plan is not identified. | Which systems *own or offer* plans: 31.8% of systems had an insurance product in 2023, 24.0% an MA plan, 15.8% Medicaid managed care, 14.8% a marketplace plan. The 80 systems with MA contracts enrolled 4.35 million people, roughly one in seven MA enrollees. | Region and year (section 3). |
+| **Managed care organizations** (HMOs, Medicare Advantage, Medicaid managed care) | Partly: about 30 managed-care variables. In 2023, 42.2% of people with Medicare were in Medicare Advantage, 27.5% of Medicaid enrollees in a Medicaid HMO (household reports: CMS's county files put MA at 48.7% of Medicare eligibles in July 2023; section 3.3). The plan is not identified. | Which systems *own or offer* plans: 31.8% of systems had an insurance product in 2023, 24.0% an MA plan, 15.8% Medicaid managed care, 14.8% a marketplace plan. The 80 systems with MA contracts enrolled 4.35 million people; joined to CMS's county files by contract number, that is 13% of MA enrollees (29% in the West, 4% in the South). | Region and year (section 3), and, through CMS's files, by where enrollees live (section 3.3). |
 | **ACOs** | No. | 2016: 55.6% of systems participated in at least one ACO contract. 2018: 58.4% had physicians in a Medicare ACO (162,000 physicians in all). Later years do not report ACOs. | Only by region, for 2016 and 2018, and MEPS has no ACO variable to relate it to. |
-| **Long-term acute care hospitals (LTACHs)** | Essentially no: a stay would be an inpatient stay that cannot be told apart from others. | Identified by Medicare CCN: 360 LTACHs in 2023, 33% in systems (17% in 2016, but the 2016 file has fewer CCNs, so part of that change is coverage). Also 385 inpatient rehabilitation hospitals (24% in systems), 682 psychiatric (31%), 1,362 critical access (50%) and 101 children's (81%). | No. |
+| **Long-term acute care hospitals (LTACHs)** | Essentially no: a stay would be an inpatient stay that cannot be told apart from others. | Identified by Medicare CCN: 360 LTACHs in 2023, 33% in systems. The share was 15-17% from 2016 to 2021; the jump in 2022 is almost all ScionHealth (launched in 2021 by LifePoint Health and Kindred Healthcare), which entered the Compendium with 48 LTACHs. Also 385 inpatient rehabilitation hospitals (24% in systems), 682 psychiatric (31%), 1,362 critical access (50%) and 101 children's (81%). | No. |
 | **Skilled nursing facilities, nursing homes** | No. The HC covers people only while they are not in an institution, so institutional care is missing from MEPS spending. | 14,820 nursing homes in 2023: only 5.9% in Compendium systems, while 48.1% belong to a corporate (non-system) owner. | No: MEPS has no nursing home residents. |
 | **Home health agencies** | As a setting: 4.4% of 2023 spending (agency and non-agency home health). | 12,809 home health, hospice and home dialysis organizations in 2023, 7.7% in systems. | Region and year only. |
 | **VA, TRICARE, Indian Health Service** | As payers or coverage. | Federal hospitals are listed, mostly without a CCN (135 hospitals with "Veterans" or "VA" in the name in 2023, 8 of them in a system); systems are defined by non-federal hospitals. | No. |
@@ -141,7 +141,31 @@ How to interpret these:
   collected with it, and AHRQ warns about trend analyses across the change),
   the 2020 pandemic, MA growth everywhere.
 
-### 3.3 What the link cannot do, and what would
+### 3.3 A better bridge for Medicare Advantage: CMS's county files [linked]
+
+The Compendium lists each system's MA contract numbers. CMS publishes MA
+enrollment by contract and county every month, and the share of Medicare
+beneficiaries in MA by county (`R/18`, July of each year). Joining the two
+places system-plan enrollees where they live, not where the system's hospitals
+are, and CMS's penetration figures are an administrative benchmark for MEPS.
+
+- **System plans by region.** In 2023, 13.0% of MA enrollees were in plans
+  offered by Compendium systems: 28.8% in the West, 13.4% in the Northeast,
+  12.7% in the Midwest and 4.1% in the South (2016: 15.0% nationally, 36.0% in
+  the West; 2016 from CMS's abridged file). The county files account for 93-95%
+  of the Compendium's national totals (CMS suppresses a contract's counts in
+  counties with 10 or fewer enrollees).
+- **MEPS against CMS.** MEPS's household reports of MA matched CMS's counts in
+  2016 (ratio 0.87-1.06 by region) but fell behind as MA grew, especially in the
+  Northeast and Midwest: in 2023 the ratios were 0.78 (Northeast), 0.79
+  (Midwest), 0.92 (South) and 0.92 (West). (CMS's denominator is all Medicare
+  eligibles; MEPS's is people reporting Medicare coverage, so some difference is
+  expected.)
+- **The two-level model with this measure** (24 region-years): 0.04 log odds
+  per 10 points between regions (−0.02 to 0.10) and 0.09 within (−0.11 to
+  0.29). Nothing, again.
+
+### 3.4 What the link cannot do, and what would
 
 - **No person-level or provider-level link.** The public files do not say which
   hospital or practice anyone used. So nothing in sections 3.1-3.2 can say
@@ -159,6 +183,18 @@ How to interpret these:
 - **For institution-level questions**, the Compendium links directly to other
   hospital data by CCN (Medicare cost reports, Hospital Compare, Provider of
   Services files) and to physician data by NPI and TIN, without MEPS.
+
+Sources that would improve the crosswalk, and what each needs:
+
+| Source | What it adds | Public? |
+|---|---|---|
+| CMS MA enrollment by state/county/contract, and MA state/county penetration (cms.gov) | System-plan enrollment where enrollees live; an administrative MA benchmark (used in `R/18`) | Yes |
+| CMS Provider of Services file (data.cms.gov) | CCNs, addresses and types for hospitals missing them in the Compendium (used in `R/14` for 2016) | Yes |
+| CMS Hospital Service Area file (data.cms.gov) | For each hospital (CCN), the ZIP codes its Medicare patients come from: local market shares of systems | Yes, but MEPS respondents' ZIP codes are not |
+| Restricted MEPS: state, county and finer geography; the Medical Provider Component; the HC-Insurance Component linked file | Contextual models at the state or county level (about 50 states, or local markets, instead of 4 regions); provider-level detail | No: AHRQ's data center or an FSRDC, after a proposal and Special Sworn Status (6 months or more) |
+| HCUP State Inpatient and Emergency Department Databases | Discharge records with AHA hospital identifiers in states that release them (an AHA linkage file exists for those), so system affiliation can be studied at the hospital level | Purchased; not MEPS people |
+| AHRQ Social Determinants of Health Database | County, ZIP code and census tract measures, including health care context | Yes, but needs restricted MEPS geography to attach to people |
+
 - **The machine learning chapters were not rerun with these measures.** A
   regional measure is constant within a region in a year, and the ML data set
   (2022 predictors, 2023 outcomes) already includes the region, so the regional
@@ -204,6 +240,7 @@ cluster functions assume equal sizes; adding the cv is a natural extension.)
   (design-based SEs), the discharge benchmark, the two-level models, and the
   2023 MEPS-only figures quoted in section 1; the second figure.
 - `R/17_cluster_sizes_design_effect.R`: section 4.
+- `R/18_cms_ma_crosswalk.R`: section 3.3 (needs CMS's public MA files).
 
 The Compendium is public, but its files are large, so they and the tables made
 from them stay out of the repository with the MEPS data. The two figures show
@@ -218,7 +255,9 @@ AHRQ, *Compendium of U.S. Health Systems*, 2016, 2018, 2020, 2021, 2022 and 2023
 with the hospital, group practice, nursing home, home health and outpatient site
 linkage files and their technical documentation (ahrq.gov/chsp); KFF, "Half of
 All Eligible Medicare Beneficiaries Are Now Enrolled in Private Medicare
-Advantage Plans" (2023; 30.2 million MA enrollees in January 2023); Eldridge,
+Advantage Plans" (2023; 30.2 million MA enrollees in January 2023); CMS,
+Monthly MA Enrollment by State/County/Contract and MA State/County Penetration,
+July 2016, 2018 and 2020-2023; CMS, Provider of Services File (Q4 2016); Eldridge,
 S. M., D. Ashby and S. Kerry (2006), Sample size for cluster randomized trials:
 effect of coefficient of variation of cluster size and analysis method,
 *International Journal of Epidemiology* 35(5), 1292-1300; Rabe-Hesketh, S. and

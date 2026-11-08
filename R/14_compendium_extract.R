@@ -59,6 +59,7 @@ ccn_type <- function(ccn) {
   k <- suppressWarnings(as.integer(substr(ccn, 3, 6)))
   out <- rep("Other", length(ccn))
   out[!ok] <- "No CCN or non-standard"
+  out[!is.na(ccn) & grepl("^[0-9]{5}F$", ccn)] <- "Federal (pseudo-CCN ending in F)"   # VA, DoD, IHS
   out[ok & k >= 1 & k <= 879] <- "Short-term acute"
   out[ok & k >= 1300 & k <= 1399] <- "Critical access"
   out[ok & k >= 2000 & k <= 2299] <- "Long-term acute care (LTACH)"
@@ -78,7 +79,7 @@ sys_vars <- c("health_sys_id", "health_sys_name", "health_sys_city", "health_sys
               "total_nps", "total_pas", "grp_cnt", "hosp_cnt", "acutehosp_cnt", "nh_cnt", "hhco_cnt", "sys_multistate",
               "sys_beds", "sys_dsch", "sys_res", "deg_children", "sys_incl_majteachhosp", "sys_teachint",
               "sys_incl_highdpphosp", "sys_highucburden", "sys_anyins_product", "sys_mcare_adv", "sys_ma_plan",
-              "sys_mcaid_mngcare", "sys_healthins_mktplc", "sys_ma_plan_enroll", "sys_ownership", "maj_inv_owned",
+              "sys_mcaid_mngcare", "sys_healthins_mktplc", "sys_ma_plan_contracts", "sys_ma_plan_enroll", "sys_ownership", "maj_inv_owned",
               "sys_aco", "sys_acoany", "sys_apm", "sys_ebpm", "sys_pctm", "sys_bundledpayment", "hos_net_revenue", "hos_total_revenue")
 # Definitions change between years (see each year's technical documentation):
 #   sys_ma_plan        2016 only: system offers an MA plan, from matches to CMS's MA contract data
@@ -89,7 +90,7 @@ sys_vars <- c("health_sys_id", "health_sys_name", "health_sys_city", "health_sys
 systems <- bind_rows(lapply(names(sys_files), function(y) {
   d <- rd(sys_files[[y]]); if (is.null(d)) return(NULL)
   o <- as.data.frame(setNames(lapply(sys_vars, function(v) col_or_na(d, v)), sys_vars))
-  for (v in setdiff(sys_vars, c("health_sys_id", "health_sys_name", "health_sys_city", "health_sys_state"))) o[[v]] <- num(o[[v]])
+  for (v in setdiff(sys_vars, c("health_sys_id", "health_sys_name", "health_sys_city", "health_sys_state", "sys_ma_plan_contracts"))) o[[v]] <- num(o[[v]])
   o$year <- as.integer(y); o
 }))
 systems$hq_region <- add_region(systems$health_sys_state)
@@ -112,6 +113,39 @@ hospitals <- bind_rows(lapply(names(hosp_files), function(y) {
              net_revenue = num(col_or_na(d, "hos_net_revenue")))
 }))
 hospitals$in_system <- as.integer(!is.na(hospitals$health_sys_id) & hospitals$health_sys_id != "")
+
+# Missing CCNs. The 2016 file lacks a CCN for 548 hospitals (later years: about 120). Two fixes,
+# each recorded in `ccn_source`:
+#  (a) AHRQ keeps a hospital's Compendium ID from year to year when its CCN or AHA ID matches, so a
+#      CCN missing in one year can be taken from the nearest other year with the same ID;
+#  (b) optionally, CMS's Provider of Services (POS) file for the same year (data.cms.gov, "Provider
+#      of Services File - Quality Improvement and Evaluation System", e.g. POS_OTHER_DEC16.csv;
+#      set POS_FILE_2016) matched on state, ZIP code and the start of the street address, kept only
+#      when exactly one POS hospital matches.
+# What remains are mostly facilities without a CCN of their own: campuses billed under a parent's
+# CCN, state psychiatric and correctional facilities, and federal hospitals.
+hospitals$ccn_source <- ifelse(is.na(hospitals$ccn), NA, "Compendium file")
+have <- hospitals[!is.na(hospitals$ccn) & !is.na(hospitals$hospital_id), c("hospital_id", "year", "ccn")]
+for (i in which(is.na(hospitals$ccn) & !is.na(hospitals$hospital_id))) {
+  o <- have[have$hospital_id == hospitals$hospital_id[i], ]
+  if (nrow(o)) { hospitals$ccn[i] <- o$ccn[which.min(abs(o$year - hospitals$year[i]))]; hospitals$ccn_source[i] <- "same Compendium ID, other year" }
+}
+pos_file <- Sys.getenv("POS_FILE_2016", "")
+if (nzchar(pos_file) && file.exists(pos_file)) {
+  pos <- read.csv(pos_file, colClasses = "character")
+  pos <- pos[pos$PRVDR_CTGRY_CD == "01", ]                                   # hospitals
+  street_key <- function(x) { x <- toupper(gsub("[^A-Za-z0-9 ]", " ", x)); x <- trimws(gsub("\\s+", " ", x))
+                              sub("^(\\S+\\s+\\S+).*$", "\\1", x) }          # house number + first word
+  pos$key <- paste(pos$STATE_CD, substr(pos$ZIP_CD, 1, 5), street_key(pos$ST_ADR))
+  one <- tapply(pos$PRVDR_NUM, pos$key, function(v) if (length(unique(v)) == 1) v[1] else NA)
+  raw16 <- as.data.frame(readxl::read_excel(find_file("system_hospital_linkage_file\\.xls$")))
+  raw16$key <- paste(toupper(raw16$hospital_state), substr(raw16$hospital_zip, 1, 5), street_key(raw16$hospital_street))
+  k <- setNames(raw16$key, as.character(raw16$compendium_hospital_id))
+  idx <- which(hospitals$year == 2016 & is.na(hospitals$ccn))
+  cand <- unname(one[k[hospitals$hospital_id[idx]]])
+  hospitals$ccn[idx] <- fix_ccn(cand); hospitals$ccn_source[idx[!is.na(cand)]] <- "CMS POS address match"
+}
+cat("CCN source by year:\n"); print(table(hospitals$year, ifelse(is.na(hospitals$ccn_source), "missing", hospitals$ccn_source)))
 hospitals$type <- ccn_type(hospitals$ccn)
 hospitals$region <- add_region(hospitals$state)
 write.csv(hospitals, file.path(out_dir, "hospitals.csv"), row.names = FALSE)

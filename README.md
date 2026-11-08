@@ -57,8 +57,9 @@ machine-learning prognostic score, checked by plasmode simulation.
 A companion note, [`docs/MEPS_and_institutions.md`](docs/MEPS_and_institutions.md),
 sets out what MEPS can and cannot say about hospitals, health systems, plans,
 ACOs and post-acute facilities, and what AHRQ's *Compendium of U.S. Health
-Systems* adds; `R/14`-`R/17` link the two by Census region and year, benchmark
-MEPS's hospital stays against hospital-reported discharges, and use real system
+Systems* adds; `R/14`-`R/18` link the two by Census region and year, benchmark
+MEPS's hospital stays and Medicare Advantage reports against hospital and CMS
+records, and use real system
 sizes to plan a trial that randomizes health systems.
 
 **Start with [`WALKTHROUGH.md`](WALKTHROUGH.md)** (simulations) **or
@@ -171,6 +172,7 @@ R/14_compendium_extract.R         AHRQ's Compendium of U.S. Health Systems (2016
 R/15_compendium_profiles.R        share of hospitals, physicians, nursing homes, home health in systems, by region and year
 R/16_meps_compendium_linkage.R    MEPS (2016, 2018-2023) linked to the Compendium by region and year: benchmark, two-level models
 R/17_cluster_sizes_design_effect.R  design effects for a trial randomizing real health systems (unequal cluster sizes)
+R/18_cms_ma_crosswalk.R           CMS county MA files + Compendium contracts: system-plan MA by region; MEPS vs CMS benchmark
 ml/R/, ml/python/                 the machine learning chapters, one script per chapter in each language:
   ml_00_extract                   h252.dta -> data/meps_ml.csv, with the shared train/test split and folds
   ml_common                       shared data loading, design matrix, survey-weighted metrics, results log
@@ -189,7 +191,8 @@ ml/R/, ml/python/                 the machine learning chapters, one script per 
   ml_99_results_table             (Python) both languages' test results in one table
 docs/                             figures shown in WALKTHROUGH.md (from the 2023 files)
 docs/MEPS_and_institutions.md     what MEPS can and cannot say about hospitals, health systems, plans, ACOs and facilities,
-                                  and what the Compendium adds (R/14-R/17)
+                                  and what the Compendium adds (R/14-R/18)
+docs/NOTES_poster_and_paper.md    notes for the poster and paper (the institutions highlight box)
 data/                             the CSVs made by 01 (not in the repository; see data/README.md)
 data_example/                     the synthetic data made by 00_make_example_data.R (made on first use)
 output/                           tables and figures made by 02-12 and the ml chapters (not in the repository)
