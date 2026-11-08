@@ -56,7 +56,8 @@ for y in ["log_cost", "high_cost", "any_er", "any_ip"]:
         p = m.predict(Xte) if reg else m.predict_proba(Xte)[:, 1]
         res.append(evaluate(y, np.asarray(p).ravel(), name, CH))
         print(f"{y} {name}: {time.time() - t:.0f} s")
-    cb = (CatBoostRegressor if reg else CatBoostClassifier)(iterations=1000, random_seed=1, verbose=0, thread_count=2)
+    cb = (CatBoostRegressor if reg else CatBoostClassifier)(iterations=1000, random_seed=1, verbose=0, thread_count=2,
+                                                         train_dir=str(OUT_DIR / "catboost_info"))
     cb.fit(Xtr[~val], yv[~val], eval_set=(Xtr[val], yv[val]), early_stopping_rounds=100)
     p = cb.predict(Xte) if reg else cb.predict_proba(Xte)[:, 1]
     res.append(evaluate(y, p, "CatBoost (defaults, early stopping)", CH))
