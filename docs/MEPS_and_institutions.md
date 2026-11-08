@@ -39,7 +39,7 @@ The code is `R/14` to `R/17`; the MEPS figures for 2023 are reproduced by
 | **Home health agencies** | As a setting: 4.4% of 2023 spending (agency and non-agency home health). | 12,809 home health, hospice and home dialysis organizations in 2023, 7.7% in systems. | Region and year only. |
 | **VA, TRICARE, Indian Health Service** | As payers or coverage. | Federal hospitals are listed, mostly without a CCN (135 hospitals with "Veterans" or "VA" in the name in 2023, 8 of them in a system); systems are defined by non-federal hospitals. | No. |
 
-## 2. Regions, and two named systems [Compendium]
+## 2. Regions, the major systems, and the events behind the trends [Compendium]
 
 The share of each kind of provider in a system, by Census region (2023; physicians 2022):
 
@@ -63,6 +63,98 @@ Colorado, Idaho, Montana and Utah from 2022 (after its merger with SCL Health),
 3,938 beds, 201,395 discharges, 3,903 physicians, 14 home health
 organizations, and 51,536 MA enrollees in 2023. Neither can be found in MEPS: a
 MEPS respondent in Arizona or Utah is known only to live in the West.
+
+### 2.1 Fifteen major systems
+
+Banner and Intermountain, plus the 13 largest systems by 2023 discharges among
+those with hospitals in three or more states (`R/19`; the largest systems this
+rule leaves out are Northwell Health, with hospitals in one state, and Cleveland
+Clinic, in two). Discharges are
+from Medicare cost reports for the systems' non-federal general acute
+hospitals; MA is whether a system hospital told the AHA survey that the system
+offers a Medicare Advantage plan, the enrollment in the MA contracts the
+Compendium matched to the system, and, from CMS's July 2023 county files,
+where most of those enrollees live.
+
+| System (2023) | HQ | Hospitals (acute) | Beds | Discharges | Physicians | Nursing homes / home health orgs | States | Ownership | Offers MA; MA enrollment |
+|---|---|---|---|---|---|---|---|---|---|
+| HCA Healthcare | TN | 185 (167) | 37,395 | 1,946,001 | 15,120 | 9 / 32 | 19 | for-profit | no |
+| CommonSpirit Health | IL | 145 (136) | 16,679 | 765,148 | 11,143 | 22 / 60 | 19 | church-operated | yes |
+| Trinity Health | MI | 105 (97) | 14,914 | 683,132 | 11,997 | 36 / 59 | 16 | church-operated | yes; 59,272 (67% Midwest) |
+| Ascension Health | MO | 120 (104) | 15,162 | 670,201 | 9,747 | 30 / 47 | 13 | church-operated | yes; 37,164 (95% South) |
+| Advocate Health | NC | 58 (53) | 10,615 | 521,832 | 10,537 | 8 / 32 | 6 | nonprofit | yes |
+| Tenet Healthcare | TX | 77 (57) | 12,073 | 498,156 | 7,218 | 2 / 1 | 12 | for-profit | no |
+| AdventHealth | FL | 42 (41) | 8,809 | 457,153 | 3,580 | 2 / 18 | 9 | church-operated | yes |
+| Kaiser Permanente | CA | 41 (40) | 9,337 | 454,046 | 25,893 | 10 / 28 | 3 | nonprofit | yes; 1,892,810 (92% West) |
+| Providence | WA | 54 (50) | 9,256 | 419,940 | 10,875 | 21 / 37 | 7 | church-operated | yes; 66,002 (West) |
+| Community Health Systems | TN | 81 (77) | 9,046 | 394,290 | 3,738 | 5 / 4 | 15 | for-profit | no |
+| Universal Health Services | PA | 158 (27) | 6,023 | 319,937 | 2,127 | 1 / 2 | 38 | for-profit | yes; 26,863 (65% West) |
+| Bon Secours Mercy Health | OH | 37 (36) | 5,641 | 306,654 | 3,821 | 5 / 25 | 4 | church-operated | no |
+| Banner Health | AZ | 33 (29) | 5,258 | 244,680 | 3,960 | 1 / 6 | 6 | nonprofit | yes; 24,089 (West) |
+| UPMC | PA | 34 (32) | 5,972 | 240,259 | 7,437 | 14 / 20 | 3 | nonprofit | yes; 211,933 (Northeast) |
+| Intermountain Healthcare | UT | 33 (31) | 3,938 | 201,395 | 3,903 | 1 / 14 | 4 | nonprofit | yes; 51,536 (West) |
+
+A few things stand out. HCA is in a class of its own (2.5 times the
+discharges of the next system). Universal Health Services is large mainly in
+psychiatric hospitals (122 of its 158). Kaiser Permanente has more physicians
+than any other system and 1.9 million MA enrollees, about 6% of all MA
+enrollment, almost all in the West: 1.72 million of the 2.0 million western MA
+enrollees in system-run plans, which is why that share is 29% in the West
+(section 3.3). The for-profit
+chains (HCA, Tenet, CHS) offer no MA plan of their own. Year-by-year profiles,
+with each system's predecessors before its mergers, are in
+`output/compendium/major_systems.csv`; the figure shows their discharges.
+
+![The 15 major systems over time](fig_major_systems.png)
+
+### 2.2 Mergers, spin-offs and other events that move the numbers
+
+Following each hospital across years by its Compendium ID, `R/19` lists every
+move of 8 or more hospitals (or nursing homes, or home health organizations)
+between systems from one Compendium year to the next. Most moves are mergers
+or acquisitions, which reshuffle hospitals among systems but leave the share in
+systems unchanged; 212 systems also changed their names without changing their
+ID (e.g., Carolinas HealthCare System to Atrium Health). A few events, though,
+move whole groups of facilities into or out of the Compendium's systems at once,
+and anyone reading the trends without knowing about them would misread them.
+
+**Events that change the regional or national shares:**
+
+| Event | Compendium years | What it does to the numbers |
+|---|---|---|
+| Quorum Health Corporation (spun off from Community Health Systems in 2016; Chapter 11 in 2020, then hospital sales) | Not a Compendium system in 2016-2018; 96 hospitals in 2020; then 20 left in 2021, 29 in 2023 | About 2 of the 4 points by which the national share of acute hospitals in systems rose between 2018 and 2020 (69.7% in 2016, 71.8% in 2018, 75.6% in 2020) are Quorum's small rural hospitals entering the list; its exits then hold the share flat. |
+| ScionHealth (launched by LifePoint Health and Kindred Healthcare, 2021) | 67 hospitals in 2022 (48 of them LTACHs), 13 more in 2023 | The share of LTACHs in systems doubled (16% in 2021, 30% in 2022, 33% in 2023); without ScionHealth it was 16% throughout. The Compendium also linked 155 hospices (Kindred Hospice, SouthernCare, Gentiva) to ScionHealth in 2022 and none in 2023; Humana, which bought Kindred at Home in 2021, sold that hospice business in 2022, so the 2022 links are probably a matching artifact. They lift the 2022 home health share (8.2%, 9.3%, 7.7% in 2021-2023). |
+| ProMedica's nursing homes (HCR ManorCare; 147 transferred to a Welltower-Integra joint venture announced in 2022) | 188 nursing homes in systems through ProMedica in 2020, 64 in 2023 | About half of the fall in the number of nursing homes in systems (1,098 to 868), and so of the fall in their share (7.5% in 2020 to 5.9% in 2023). |
+| Community Health Systems' divestitures | 161 hospitals in 2016, 118 in 2018, 81 in 2023 | Mostly sales to other systems (e.g., 8 to Steward by 2018), so the overall share changes little, but CHS's own trends and rank change a lot. |
+| A change in the home health file's coverage | 9,638 organizations in 2020, 12,544 in 2021 | Not a market event: the 2021 file covers more organizations. Compare home health shares within 2021-2023. |
+
+**Mergers that reshape the largest systems** (each verified against the
+hospital flows; years are the announcement or completion years):
+
+| Event | Year | Compendium years |
+|---|---|---|
+| Providence Health & Services + St. Joseph Health (Providence St. Joseph Health, later Providence) | 2016 | 2016-2018 |
+| IASIS Healthcare acquired by Steward Health Care | 2017 | 2016-2018 |
+| Advocate Health Care + Aurora Health Care (Advocate Aurora Health) | 2018 | 2016-2018 |
+| Mountain States Health Alliance + Wellmont (Ballad Health) | 2018 | 2016-2018 |
+| Presence Health into Ascension | 2018 | 2016-2018 |
+| RCCH HealthCare Partners + LifePoint Health | 2018 | 2016-2018 |
+| East Texas Medical Center into Ardent Health | 2018 | 2016-2018 |
+| Mercy Health + Bon Secours (Bon Secours Mercy Health) | 2018 | 2018-2020 |
+| Catholic Health Initiatives + Dignity Health (CommonSpirit Health) | 2019 | 2018-2020 |
+| Mission Health acquired by HCA | 2019 | 2018-2020 |
+| Lafayette General into Ochsner | 2020 | 2018-2020 |
+| Beaumont + Spectrum Health (Corewell Health) | 2022 | 2021-2022 |
+| SCL Health into Intermountain | 2022 | 2021-2022 |
+| Atrium Health + Advocate Aurora Health (Advocate Health) | 2022 | 2021-2022 |
+
+For the trends in sections 2 and 3 these mergers are neutral (a hospital in
+one system moving to another stays in a system). They matter for anything that
+follows a named system over time: CommonSpirit, Advocate Health, Corewell and
+Bon Secours Mercy did not exist under those names in 2016, and Intermountain's
+hospital count jumped from 22-24 to 33 in 2022 because of SCL Health. `R/19`
+therefore profiles each 2023 system together with its predecessors (any system
+with at least 3 hospitals of which at least 40% ended up in the 2023 system).
 
 ## 3. Linking MEPS to the Compendium [linked]
 
@@ -241,10 +333,21 @@ cluster functions assume equal sizes; adding the cv is a natural extension.)
   2023 MEPS-only figures quoted in section 1; the second figure.
 - `R/17_cluster_sizes_design_effect.R`: section 4.
 - `R/18_cms_ma_crosswalk.R`: section 3.3 (needs CMS's public MA files).
+- `R/19_major_systems_and_events.R`: sections 2.1 and 2.2.
 
 The Compendium is public, but its files are large, so they and the tables made
 from them stay out of the repository with the MEPS data. The two figures show
 only regional aggregates.
+
+**Sources for the events in section 2.2** (besides the Compendium itself):
+Becker's Hospital Review, "CHS nears end of divestiture spree after shedding
+more than 90 hospitals"; Bloomberg Law, "Quorum Hospital Chain Seeks Bankruptcy
+Amid Covid Onslaught" (2020); LifePoint Health, "LifePoint Health and Kindred
+Healthcare to launch new company, ScionHealth" (2021); Hospice News, "Humana
+completes Kindred at Home acquisition, plans to divest hospice" (2021); Skilled
+Nursing News, "147 ProMedica SNF assets to transition into new Welltower,
+Integra Health JV" (2022). The merger years are those of the public
+announcements or completions.
 
 **Sources:** MEPS HC-251 documentation (2023 Full Year Consolidated file),
 sections on the Medical Provider Component and person eligibility; HC-209

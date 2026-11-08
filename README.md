@@ -173,6 +173,7 @@ R/15_compendium_profiles.R        share of hospitals, physicians, nursing homes,
 R/16_meps_compendium_linkage.R    MEPS (2016, 2018-2023) linked to the Compendium by region and year: benchmark, two-level models
 R/17_cluster_sizes_design_effect.R  design effects for a trial randomizing real health systems (unequal cluster sizes)
 R/18_cms_ma_crosswalk.R           CMS county MA files + Compendium contracts: system-plan MA by region; MEPS vs CMS benchmark
+R/19_major_systems_and_events.R   the 15 major systems over time, and the mergers and spin-offs that move many hospitals
 ml/R/, ml/python/                 the machine learning chapters, one script per chapter in each language:
   ml_00_extract                   h252.dta -> data/meps_ml.csv, with the shared train/test split and folds
   ml_common                       shared data loading, design matrix, survey-weighted metrics, results log
@@ -191,7 +192,7 @@ ml/R/, ml/python/                 the machine learning chapters, one script per 
   ml_99_results_table             (Python) both languages' test results in one table
 docs/                             figures shown in WALKTHROUGH.md (from the 2023 files)
 docs/MEPS_and_institutions.md     what MEPS can and cannot say about hospitals, health systems, plans, ACOs and facilities,
-                                  and what the Compendium adds (R/14-R/18)
+                                  and what the Compendium adds (R/14-R/19)
 docs/NOTES_poster_and_paper.md    notes for the poster and paper (the institutions highlight box)
 data/                             the CSVs made by 01 (not in the repository; see data/README.md)
 data_example/                     the synthetic data made by 00_make_example_data.R (made on first use)
