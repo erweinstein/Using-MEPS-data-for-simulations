@@ -748,10 +748,10 @@ training rows.
 
 Two learners were tried and set aside. TabM (Gorishniy, Kotelnikov and Babenko
 2025) took 32 minutes for five fits of the stays data on this 2-core CPU, and
-the ensembles gave it almost no weight. TabPFN was run for the four problems
-with fewer than 5,000 training rows but not for high use (10,354 rows), where
-five fits would have taken hours on a CPU; it was run with two ensemble members
-instead of its default eight, for the same reason.
+the ensembles gave it almost no weight. TabPFN was run with two ensemble
+members instead of its default eight for the four problems with fewer than
+5,000 training rows, and with one for high use (10,354 rows; `--tabpfn-large`),
+where its five fold fits took 62 minutes on this 2-core CPU.
 
 The R version (`ml/R/ml_14_updated_super_learner.R`) uses the SuperLearner
 package itself: the same kinds of learners (with MARS and a GAM in place of the
@@ -768,10 +768,10 @@ household-bootstrap 95% intervals:
 | | S1 log spending | S2 top 10% | S3 log nights | S3b week or more | S4 high use |
 |---|---|---|---|---|---|
 | Chapter 13's stack (Python) | 0.4960 | 0.8186 | 0.2087 | 0.7727 | 0.8045 |
-| Updated Super Learner (Python) | 0.4965 | 0.8196 | 0.2107 | 0.7750 | 0.8050 |
-| its gain | +0.0005 (−0.004, 0.006) | +0.0010 (−0.001, 0.003) | +0.0021 (−0.005, 0.010) | +0.0023 (−0.003, 0.008) | +0.0005 (−0.001, 0.002) |
-| what it chose | input-dependent weights | NNLS, chapter 13's learners | NNLS, full library without TabPFN | ensemble selection, + 16 configurations | input-dependent weights |
-| Full library, NNLS (Python): gain | +0.0007 (−0.003, 0.004) | +0.0027 (0.000, 0.006) | +0.0056 (−0.002, 0.014) | +0.0026 (−0.002, 0.008) | +0.0007 (−0.001, 0.002) |
+| Updated Super Learner (Python) | 0.4965 | 0.8196 | 0.2107 | 0.7750 | 0.8051 |
+| its gain | +0.0005 (−0.004, 0.006) | +0.0010 (−0.001, 0.003) | +0.0021 (−0.005, 0.010) | +0.0023 (−0.003, 0.008) | +0.0006 (−0.001, 0.002) |
+| what it chose | input-dependent weights | NNLS, chapter 13's learners | NNLS, full library without TabPFN | ensemble selection, + 16 configurations | ensemble selection, full library |
+| Full library, NNLS (Python): gain | +0.0007 (−0.003, 0.004) | +0.0027 (0.000, 0.006) | +0.0056 (−0.002, 0.014) | +0.0026 (−0.002, 0.008) | +0.0006 (−0.001, 0.002) |
 | Updated Super Learner (R): gain | 0.0000 | +0.0062 (0.004, 0.009) | +0.0044 (−0.003, 0.012) | −0.0004 (−0.007, 0.006) | +0.0031 (0.001, 0.006) |
 
 ![The updated Super Learner against chapter 13's stack](docs/ml/fig14_summary.png)
@@ -789,15 +789,19 @@ household-bootstrap 95% intervals:
    other. What changed the predictions was the new learners: for nights per stay
    the full-library stack put 0.24 on LightGBM, 0.20 on extremely randomized
    trees, 0.19 on TabPFN, 0.19 on XGBoost and 0.11 on the SVM, where chapter
-   13's had put 0.46 on XGBoost and 0.25 on the SVM; for high use, 0.23 on the
-   deeper XGBoost and 0.17 each on CatBoost and LightGBM.
+   13's had put 0.46 on XGBoost and 0.25 on the SVM; for high use, 0.22 on the
+   deeper XGBoost, 0.18 on OLS, 0.16 on LightGBM, 0.15 on CatBoost and 0.11 on
+   TabPFN, where chapter 13's had put 0.43 on XGBoost and 0.31 on OLS.
 3. **TabPFN was the best single learner twice and the worst once.** Alone, it had
    the highest test AUC of anything for the top 10% (0.8235, above every
    ensemble) and for a week-long stay (0.7752), but R² 0.460 for log spending,
-   below OLS, as in chapter 11. Ensembles gave it 0.18–0.22 of the weight for
-   both spending problems and for nights per stay, and none for long stays.
-   With two of its eight ensemble members, on a CPU, it took 17–33 minutes per
-   problem, more than everything else together.
+   below OLS, as in chapter 11, and AUC 0.800 for high use, below the three
+   boosting methods (0.804–0.805). Ensembles gave it 0.18–0.22 of the weight
+   for both spending problems and for nights per stay, 0.11–0.16 for high use,
+   and none for long stays. With two of its eight ensemble members, on a CPU, it
+   took 17–33 minutes per problem, more than everything else together, and with
+   one member 62 minutes for high use; adding it to the high-use library changed
+   the updated Super Learner's gain by 0.0001.
 4. **Choosing among near-ties cost a little.** The simplest update, the full
    library combined by NNLS with nothing chosen, gained in all five problems
    (+0.0007 to +0.0056; for the top 10% its interval excludes zero), and more

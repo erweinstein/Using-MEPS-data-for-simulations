@@ -40,7 +40,8 @@ Add --configs for 16 more random configurations of LightGBM, CatBoost and XGBoos
 post-hoc ensembling of many configurations; cached separately).
 
 Usage:  python ml/python/ml_14_updated_super_learner.py [S3 S3b S1 S2 S4]   (hours on 2 CPU cores, most of
-        it TabPFN -- add --no-foundation to leave it out: then about 15 minutes)
+        it TabPFN -- add --no-foundation to leave it out: then about 15 minutes). TabPFN is skipped for
+        high use (S4, 10,354 training rows) unless --tabpfn-large is given (about another hour).
 
 Eliot R. Weinstein
 eliotw@uchicago.edu
@@ -98,14 +99,15 @@ def extra_learners(kind, X, n):
             make_pipeline(spl, StandardScaler(), LogisticRegressionCV(Cs=10, cv=3, l1_ratios=[0.0], scoring="neg_log_loss",
                                                                        max_iter=5000)),
     }
-    if FOUNDATION and n < 7500:      # not for S4 (10,354 training rows): too slow on a CPU here
+    # For S4 (10,354 training rows) only with --tabpfn-large, and with one ensemble member: hours on a CPU
+    if FOUNDATION and (n < 7500 or "--tabpfn-large" in sys.argv):
         from tabpfn import TabPFNClassifier, TabPFNRegressor
         from tabpfn.constants import ModelVersion
         # TabM was tried and dropped: 32 minutes for five fits of the stays data on a shared 2-core CPU, and
         # weaker than the boosted trees there (as in chapter 11)
         # two ensemble members (the default is 8) to keep CPU time down
         lib["TabPFN v2"] = _Arr((TabPFNRegressor if reg else TabPFNClassifier).create_default_for_version(
-            ModelVersion.V2, device="cpu", random_state=1, ignore_pretraining_limits=True, n_estimators=2))
+            ModelVersion.V2, device="cpu", random_state=1, ignore_pretraining_limits=True, n_estimators=2 if n < 7500 else 1))
     return lib
 
 

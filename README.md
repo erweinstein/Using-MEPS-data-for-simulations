@@ -139,7 +139,8 @@ python ml/python/ml_13a_stays_extract.py "C:/Users/YOU/folder/MEPS raw"   # or R
 python ml/python/ml_13_model_comparison.py          # S1-S4 (~35 min); or Rscript ml/R/ml_13_model_comparison.R (~2 hours)
 python ml/python/ml_13c_summary.py                  # one figure and table across scenarios and languages
 python ml/python/ml_14_updated_super_learner.py --configs   # chapter 14 (hours on a CPU, most of it TabPFN;
-                                                            # add --no-foundation to skip it: about 30 minutes)
+                                                            # add --no-foundation to skip it: about 30 minutes;
+                                                            # add --tabpfn-large to fit it for high use too: +1 hour)
 Rscript ml/R/ml_14_updated_super_learner.R                  # the SuperLearner-package version (about an hour)
 ```
 
