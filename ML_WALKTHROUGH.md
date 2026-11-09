@@ -20,8 +20,10 @@ It adds what those books do not cover: stacking and the Super Learner, conformal
 prediction intervals, subgroup checks, methods from the last four years for
 tabular data (TabPFN, RealMLP, TabM), a chapter that comes back to
 simulation and trial design (adjusting a trial's analysis for a machine-learning
-prognostic score), and a last one that lines up ten learners and their stack on
-four problems, including length of hospital stay and a fairness check. Every chapter has an R script and a Python script that use
+prognostic score), one that lines up ten learners and their stack on five
+problems, including length of hospital stay and a fairness check, and a last one
+that updates the Super Learner with what the last few years of stacking research
+recommend. Every chapter has an R script and a Python script that use
 exactly the same rows, folds and test set, so the numbers can be compared.
 
 As in the first half, the numbers below are what we got with the 2023 release
@@ -165,7 +167,8 @@ minutes), and TabPFN on a CPU (chapter 11; about an hour for four outcomes on tw
 cores; much faster on a GPU). RealMLP, TabM and CatBoost (chapter 11b) take about
 ten minutes. Chapter 13 takes about 35 minutes in Python and two hours in R for
 all five problems (most of it the random forests, SVMs and neural networks, and
-the permutation importance of the stack).
+the permutation importance of the stack). Chapter 14 takes about half an hour
+without TabPFN; TabPFN on a CPU added 17–33 minutes per problem.
 
 ## 3. How the models are judged
 
@@ -688,6 +691,137 @@ standard MEPS example for group fairness metrics and reweighing. None of them
 uses the stay files; the length-of-stay scenario here is, as far as we found,
 new for MEPS.
 
+### 4.14 An updated Super Learner (`ml_14_updated_super_learner`)
+
+Chapter 13's stack is the 2023 `pystacked` default: ten tuned learners, refitted
+on all the training data, combined by non-negative least squares. The last few
+years of work on stacking suggest five changes, and this chapter tries all of
+them on the same five problems, the same household folds and the same test
+sets.
+
+**What recent work recommends.**
+
+- **A bigger, more varied library, with several configurations of a learner
+  rather than one tuned version, and the final choice made by a discrete Super
+  Learner that can pick an ensemble or a single learner** (Phillips, van der
+  Laan, Lee and Gruber 2023). They also define an effective sample size (for a
+  yes/no outcome, five times the rarer class, at most n) and pick the number of
+  folds from it; for these data (effective n from about 2,200 to 10,000), five
+  folds is in their range.
+- **Fold-bagging.** AutoGluon (Erickson et al. 2020) and the TabArena benchmark
+  (Erickson et al. 2025) do not refit each learner on all the data: the five
+  models fitted for the out-of-fold predictions also predict the test data, and
+  their predictions are averaged. The stacking weights are then learned on, and
+  applied to, the same kind of prediction.
+- **Post-hoc ensembling by greedy ensemble selection** (Caruana, Niculescu-Mizil,
+  Crew and Ksikes 2004) over many configurations of each model: TabArena found
+  that without it, each of its top three models (TabM, LightGBM, RealMLP) would
+  fall below the fourth (CatBoost).
+- **Weights that depend on the inputs.** Some learners are better for some
+  people. Bayesian hierarchical stacking (Yao, Pirš, Vehtari and Gelman 2022)
+  makes the weights a softmax of linear functions of covariates, pooled toward
+  constant weights; feature-weighted linear stacking (Sill, Takács, Mackey and Lin
+  2009) is the penalized least-squares version.
+- **Learners made for tables**, above all the foundation model TabPFN v2
+  (Hollmann et al. 2025; chapter 11), which TabArena found the best single model
+  on data sets of this size.
+
+For yes/no outcomes, the SuperLearner package's log-likelihood meta-learner
+(`method.CC_nloglik`: a convex combination of the learners' logits) is the
+usual alternative to least squares on probabilities.
+
+**What we built.**
+
+| | Chapter 13's stack | Updated Super Learner |
+|---|---|---|
+| Library | 10 learners, each tuned | the same 10, plus LightGBM, CatBoost, a deeper XGBoost, extremely randomized trees, a spline-ridge model (GAM-like) and TabPFN v2; optionally 16 more random configurations of LightGBM, CatBoost and XGBoost from TabArena-style ranges |
+| Test predictions | each learner refitted on all training data | fold-bagged: the average of the five fold models |
+| Meta-learner | NNLS, weights summing to one | NNLS; logit-scale convex combination (yes/no outcomes); greedy ensemble selection; input-dependent weights |
+| Final choice | the stack | a discrete Super Learner over every learner and every ensemble, by cross-validated risk (squared error; log loss for yes/no outcomes) |
+
+The ensembles' cross-validated risks come from a second level of
+cross-validation: each meta-learner is refitted on the out-of-fold predictions
+of four household folds and scored on the fifth. Nothing in the choice touches
+the test data. The input-dependent weights use age and the tertile of the plain
+stack's prediction, with the penalty chosen by cross-validation inside the
+training rows.
+
+Two learners were tried and set aside. TabM (Gorishniy, Kotelnikov and Babenko
+2025) took 32 minutes for five fits of the stays data on this 2-core CPU, and
+the ensembles gave it almost no weight. TabPFN was run for the four problems
+with fewer than 5,000 training rows but not for high use (10,354 rows), where
+five fits would have taken hours on a CPU; it was run with two ensemble members
+instead of its default eight, for the same reason.
+
+The R version (`ml/R/ml_14_updated_super_learner.R`) uses the SuperLearner
+package itself: the same kinds of learners (with MARS and a GAM in place of the
+spline ridge, and no TabPFN), `method.NNLS` and `method.CC_nloglik`, greedy
+ensemble selection written as a SuperLearner "method" (how to add any
+meta-learner of your own), and the same second-level cross-validation. It
+refits on all the training data, as SuperLearner does, and its baseline is a
+chapter 13-like stack rebuilt inside SuperLearner.
+
+**What we found.** Test-data R² or AUC, survey-weighted; gains are over
+chapter 13's stack (in R, over the chapter 13-like stack), with
+household-bootstrap 95% intervals:
+
+| | S1 log spending | S2 top 10% | S3 log nights | S3b week or more | S4 high use |
+|---|---|---|---|---|---|
+| Chapter 13's stack (Python) | 0.4960 | 0.8186 | 0.2087 | 0.7727 | 0.8045 |
+| Updated Super Learner (Python) | 0.4965 | 0.8196 | 0.2107 | 0.7750 | 0.8050 |
+| its gain | +0.0005 (−0.004, 0.006) | +0.0010 (−0.001, 0.003) | +0.0021 (−0.005, 0.010) | +0.0023 (−0.003, 0.008) | +0.0005 (−0.001, 0.002) |
+| what it chose | input-dependent weights | NNLS, chapter 13's learners | NNLS, full library without TabPFN | ensemble selection, + 16 configurations | input-dependent weights |
+| Full library, NNLS (Python): gain | +0.0007 (−0.003, 0.004) | +0.0027 (0.000, 0.006) | +0.0056 (−0.002, 0.014) | +0.0026 (−0.002, 0.008) | +0.0007 (−0.001, 0.002) |
+| Updated Super Learner (R): gain | 0.0000 | +0.0062 (0.004, 0.009) | +0.0044 (−0.003, 0.012) | −0.0004 (−0.007, 0.006) | +0.0031 (0.001, 0.006) |
+
+![The updated Super Learner against chapter 13's stack](docs/ml/fig14_summary.png)
+
+1. **Slightly better, as expected.** In Python the updated Super Learner beat
+   chapter 13's stack in all five problems, by 0.0005 to 0.0023, and no interval
+   excludes zero. In R it gained up to 0.006, with intervals that exclude zero
+   for the top 10% and for high use, partly because R's baseline was weaker
+   (refitted learners, no KNN). Gains this size are below what a test set of
+   1,600 to 4,400 people can confirm one problem at a time.
+2. **The gain came from the library, not from the bagging or the
+   meta-learner.** Chapter 13's ten learners, fold-bagged and combined the same
+   way ("NNLS, ch13 library"), were within ±0.001 of chapter 13's refitted
+   stack. The four meta-learners on the full library were within 0.001 of each
+   other. What changed the predictions was the new learners: for nights per stay
+   the full-library stack put 0.24 on LightGBM, 0.20 on extremely randomized
+   trees, 0.19 on TabPFN, 0.19 on XGBoost and 0.11 on the SVM, where chapter
+   13's had put 0.46 on XGBoost and 0.25 on the SVM; for high use, 0.23 on the
+   deeper XGBoost and 0.17 each on CatBoost and LightGBM.
+3. **TabPFN was the best single learner twice and the worst once.** Alone, it had
+   the highest test AUC of anything for the top 10% (0.8235, above every
+   ensemble) and for a week-long stay (0.7752), but R² 0.460 for log spending,
+   below OLS, as in chapter 11. Ensembles gave it 0.18–0.22 of the weight for
+   both spending problems and for nights per stay, and none for long stays.
+   With two of its eight ensemble members, on a CPU, it took 17–33 minutes per
+   problem, more than everything else together.
+4. **Choosing among near-ties cost a little.** The simplest update, the full
+   library combined by NNLS with nothing chosen, gained in all five problems
+   (+0.0007 to +0.0056; for the top 10% its interval excludes zero), and more
+   than the discrete Super Learner in four. The ensembles' cross-validated risks
+   differed in the fourth decimal (0.6716 to 0.6728 for nights per stay), so
+   which one won was mostly noise. This was seen on the test data, so it is a
+   lesson for next time rather than a reason to switch here: when ensembles tie
+   in cross-validated risk, fix one in advance (NNLS on a large, varied library)
+   rather than choose among them.
+5. **Many configurations did not help at this size.** Sixteen more random
+   configurations of the boosted trees, TabArena's recipe, lowered
+   cross-validated risk in one problem out of five, by 0.00001, and changed the
+   test metrics by less than 0.002. With 4,000 to 10,000 rows, configurations of the same algorithm make
+   nearly the same predictions; TabArena's data sets are larger and its models
+   are tuned more widely.
+6. **Weights that vary by person added nothing here.** Input-dependent weights
+   were chosen twice (log spending, high use), but their test results were
+   within 0.0015 of plain NNLS's in every problem.
+
+**What we'd recommend for data like these.** Keep NNLS; add CatBoost, LightGBM
+and extremely randomized trees to the library, and TabPFN if there is a GPU;
+fold-bag if refitting is slow. Expect gains in the third decimal place. The
+plain regression is still within 0.01–0.02 of all of it (chapter 13).
+
 ## 5. All results in one table
 
 The test-set metric for each model and outcome: R² for log spending, spending
@@ -852,6 +986,10 @@ Mondrian conformal (chapter 10), TreeSHAP and ALE (chapter 9), and PROCOVA
 - **A comparison is only as fair as its worst-tuned learner.** One default
   setting (early stopping on accuracy) made a neural network look useless for a
   rare outcome (chapter 13).
+- **Choosing among near-ties adds noise.** When several ensembles have
+  cross-validated risks equal to the fourth decimal, picking the lowest is
+  close to picking at random; fixing one in advance did as well or better
+  (chapter 14).
 - **Not causal.** None of these models says what would happen if someone's
   insurance or health changed.
 - **The data use agreement.** MEPS public use files may be used for research
@@ -866,6 +1004,9 @@ Mondrian conformal (chapter 10), TreeSHAP and ALE (chapter 9), and PROCOVA
   909–931.
 - Angelopoulos, A. N. and S. Bates (2023). Conformal prediction: a gentle
   introduction. *Foundations and Trends in Machine Learning* 16(4), 494–591.
+- Caruana, R., A. Niculescu-Mizil, G. Crew and A. Ksikes (2004). Ensemble
+  selection from libraries of models. *Proceedings of the 21st International
+  Conference on Machine Learning*.
 - Bankiewicz, D., J. Białek and A. Pałdyna (2020). Story MEPS: healthcare
   expenditures of individuals. Chapter 7 of *XAI Stories: Case Studies for
   eXplainable Artificial Intelligence* (online book for a University of Warsaw
@@ -891,6 +1032,9 @@ Mondrian conformal (chapter 10), TreeSHAP and ALE (chapter 9), and PROCOVA
 - Gibbs, I., J. J. Cherian and E. J. Candès (2025). Conformal prediction with
   conditional guarantees. *Journal of the Royal Statistical Society Series B*
   87, 1100–1126.
+- Erickson, N., J. Mueller, A. Shirkov, H. Zhang, P. Larroy, M. Li and A.
+  Smola (2020). AutoGluon-Tabular: robust and accurate AutoML for structured
+  data. arXiv:2003.06505.
 - Gorishniy, Y., A. Kotelnikov and A. Babenko (2025). TabM: advancing tabular
   deep learning with parameter-efficient ensembling. *ICLR 2025*.
 - Grinsztajn, L., E. Oyallon and G. Varoquaux (2022). Why do tree-based models
@@ -932,6 +1076,11 @@ Mondrian conformal (chapter 10), TreeSHAP and ALE (chapter 9), and PROCOVA
 - Obermeyer, Z., B. Powers, C. Vogeli and S. Mullainathan (2019). Dissecting
   racial bias in an algorithm used to manage the health of populations.
   *Science* 366, 447–453.
+- Phillips, R. V., M. J. van der Laan, H. Lee and S. Gruber (2023). Practical
+  considerations for specifying a super learner. *International Journal of
+  Epidemiology* 52(4), 1276–1285.
+- Polley, E., E. LeDell, C. Kennedy and M. van der Laan. SuperLearner: Super
+  Learner prediction. R package, CRAN.
 - Prokhorenkova, L., G. Gusev, A. Vorobev, A. V. Dorogush and A. Gulin (2018).
   CatBoost: unbiased boosting with categorical features. *NeurIPS 2018*.
 - Romano, Y., E. Patterson and E. J. Candès (2019). Conformalized quantile
@@ -945,12 +1094,17 @@ Mondrian conformal (chapter 10), TreeSHAP and ALE (chapter 9), and PROCOVA
 - Vovk, V., A. Gammerman and G. Shafer (2005). *Algorithmic Learning in a Random
   World*. Springer.
 - Wolpert, D. H. (1992). Stacked generalization. *Neural Networks* 5, 241–259.
+- Sill, J., G. Takács, L. Mackey and D. Lin (2009). Feature-weighted linear
+  stacking. arXiv:0911.0460.
 - Wu, Z., S. A. Berkowitz, P. J. Heagerty and D. Benkeser (2022). A two-stage
   super learner for healthcare expenditures. *Health Services and Outcomes
   Research Methodology* 22(4), 435–453.
 - Yang, Y., W. Qian and H. Zou (2018). Insurance premium prediction via gradient
   tree-boosted Tweedie compound Poisson models. *Journal of Business & Economic
   Statistics* 36, 456–470.
+- Yao, Y., G. Pirš, A. Vehtari and A. Gelman (2022). Bayesian hierarchical
+  stacking: some models are (somewhere) useful. *Bayesian Analysis* 17(4).
+  doi:10.1214/21-BA1287.
 - Zayas, C. E., Z. He, J. Yuan, M. Maldonado-Molina, W. Hogan, F. Modave, Y. Guo
   and J. Bian (2016). Examining healthcare utilization patterns of elderly
   middle-aged adults in the United States. *Proceedings of the International

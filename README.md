@@ -138,6 +138,9 @@ Chapter 13 compares ten learners and their stack on four problems; its extract a
 python ml/python/ml_13a_stays_extract.py "C:/Users/YOU/folder/MEPS raw"   # or Rscript ml/R/ml_13a_stays_extract.R ...
 python ml/python/ml_13_model_comparison.py          # S1-S4 (~35 min); or Rscript ml/R/ml_13_model_comparison.R (~2 hours)
 python ml/python/ml_13c_summary.py                  # one figure and table across scenarios and languages
+python ml/python/ml_14_updated_super_learner.py --configs   # chapter 14 (hours on a CPU, most of it TabPFN;
+                                                            # add --no-foundation to skip it: about 30 minutes)
+Rscript ml/R/ml_14_updated_super_learner.R                  # the SuperLearner-package version (about an hour)
 ```
 
 Results go to `output/` (CSV tables and PNG figures). Times are from a modest
@@ -202,6 +205,8 @@ ml/R/, ml/python/                 the machine learning chapters, one script per 
   ml_13_model_comparison          ten learners + stack on four problems: in-/out-of-sample plots, importance, ROC,
                                   calibration, fairness by race and ethnicity
   ml_13c_summary                  (Python) gains over OLS/logistic across scenarios, both languages
+  ml_14_updated_super_learner     a bigger library, fold-bagging, four meta-learners and a discrete Super Learner
+                                  over them, against chapter 13's stack
 ml/stata/ml_13_pystacked.do       chapter 13's length-of-stay comparison with Stata's pystacked (not run here; untested)
   ml_99_results_table             (Python) both languages' test results in one table
 docs/                             figures shown in WALKTHROUGH.md (from the 2023 files)
